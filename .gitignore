@@ -1,2 +1,4 @@
 node_modules/
+.opencode/
+NEXTSESSION.md
 package-lock.json
