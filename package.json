@@ -1,10 +1,17 @@
 {
   "name": "gitmag",
   "version": "0.1.0",
+  "description": "A terminal-based Git activity digest — your daily developer briefing across local repositories.",
   "type": "module",
+  "bin": {
+    "gitmag": "./dist/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "prepare": "husky",
-    "dev": "tsx src/index.ts",
+    "dev": "tsx src/cli.tsx",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

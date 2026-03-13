@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "lib": ["ES2022"],
+    "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "jsx": "react-jsx",
+    "lib": ["ES2022"],
     "resolveJsonModule": true,
-    "allowJs": true,
-    "checkJs": false,
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,

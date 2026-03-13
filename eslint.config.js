@@ -17,11 +17,15 @@ export default [
         ecmaFeatures: {
           jsx: true,
         },
-        project: './tsconfig.json',
+        project: ['./tsconfig.json', './tsconfig.test.json'],
       },
       globals: {
         console: 'readonly',
         process: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
       },
     },
     plugins: {
