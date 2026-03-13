@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { render } from 'ink';
+import {
+  enterAlternativeScreen,
+  exitAlternativeScreen,
+  cursorHide,
+  cursorShow,
+} from 'ansi-escapes';
 import { App } from './app.js';
 import { printSchema } from './output/schema.js';
 import { printJsonOutput } from './output/json-output.js';
@@ -8,6 +14,14 @@ import { findRepos } from './scanner/find-repos.js';
 import { getRepoActivity } from './scanner/repo-activity.js';
 import { recordRun, getWindowStart, resetState } from './state/config.js';
 import type { AppConfig } from './types/index.js';
+
+/** Write exit sequences and restore the terminal to its prior state. */
+function restoreTerminal(isTTY: boolean): void {
+  if (isTTY) {
+    process.stdout.write(cursorShow);
+    process.stdout.write(exitAlternativeScreen);
+  }
+}
 
 const program = new Command();
 
@@ -68,9 +82,37 @@ if (config.json) {
     process.exit(1);
   });
 } else {
-  // Default: interactive TUI
-  render(<App config={config} />, {
-    stdin: process.stdin,
-    exitOnCtrlC: true,
+  // Default: interactive TUI — run in the alternate screen buffer
+  (async () => {
+    const isTTY = Boolean(process.stdout.isTTY);
+
+    // Enter fullscreen alternate buffer and hide the cursor
+    if (isTTY) {
+      process.stdout.write(enterAlternativeScreen);
+      process.stdout.write(cursorHide);
+    }
+
+    // Ensure the terminal is always restored on SIGTERM (e.g. kill, system shutdown)
+    const onSigterm = () => {
+      restoreTerminal(isTTY);
+      process.kill(process.pid, 'SIGTERM');
+    };
+    process.once('SIGTERM', onSigterm);
+
+    const { waitUntilExit } = render(<App config={config} />, {
+      stdin: process.stdin,
+      exitOnCtrlC: true,
+    });
+
+    try {
+      await waitUntilExit();
+    } finally {
+      process.removeListener('SIGTERM', onSigterm);
+      restoreTerminal(isTTY);
+    }
+  })().catch((err: unknown) => {
+    restoreTerminal(Boolean(process.stdout.isTTY));
+    process.stderr.write(`gitmag error: ${String(err)}\n`);
+    process.exit(1);
   });
 }
