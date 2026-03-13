@@ -114,7 +114,14 @@ export function App({ config }: AppProps) {
 
       setRepos(collected);
       setIsScanComplete(true);
-      setTimeout(() => setScreen('repos'), 600);
+      setTimeout(() => {
+        if (collected.length === 1) {
+          setSelectedRepo(collected[0]);
+          setScreen('authors');
+        } else {
+          setScreen('repos');
+        }
+      }, 600);
     };
 
     run().catch((err: unknown) => {
