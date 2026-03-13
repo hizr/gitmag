@@ -37,6 +37,12 @@ function buildLogLines(events: ScanEvent[]): ScanLogLine[] {
         text: `  ✓ ${event.repoName}: ${event.commitCount} ${commitLabel}, ${event.authorCount} ${authorLabel}`,
         color: 'green',
       });
+    } else if (event.type === 'error') {
+      lines.push({
+        id: `error-${event.repoPath}`,
+        text: `  ✗ ${event.repoName}: ${event.message}`,
+        color: 'red',
+      });
     } else if (event.type === 'done') {
       lines.push({
         id: 'done',
@@ -50,17 +56,19 @@ function buildLogLines(events: ScanEvent[]): ScanLogLine[] {
 }
 
 function getActiveStatus(events: ScanEvent[]): string | null {
-  // Find the last fetching event that hasn't been completed yet
+  // Find the last fetching event that hasn't been completed yet (and not errored)
   const fetchingRepos = new Set<string>();
   const fetchedRepos = new Set<string>();
+  const erroredRepos = new Set<string>();
 
   for (const event of events) {
     if (event.type === 'fetching') fetchingRepos.add(event.repoPath);
     if (event.type === 'fetched') fetchedRepos.add(event.repoPath);
+    if (event.type === 'error') erroredRepos.add(event.repoPath);
   }
 
   for (const repoPath of fetchingRepos) {
-    if (!fetchedRepos.has(repoPath)) {
+    if (!fetchedRepos.has(repoPath) && !erroredRepos.has(repoPath)) {
       const event = events.find((e) => e.type === 'fetching' && e.repoPath === repoPath);
       if (event && event.type === 'fetching') {
         return `Fetching activity for ${event.repoName}...`;

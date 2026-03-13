@@ -18,13 +18,13 @@ export async function findRepos(
 ): Promise<FindReposResult> {
   const absoluteRoot = resolve(rootDir);
 
-  // fast-glob deep counts the number of path segments (directories) to traverse.
-  // We want to find .git at any depth from 0 up to `depth`.
-  // depth + 1 accounts for the .git segment itself.
+  // fast-glob deep counts the number of path segments to traverse.
+  // With depth=3, we find .git up to a/b/c/.git (repo root 3 levels below cwd).
+  // depth=0 would find only cwd/.git (repo at cwd level), depth=3 finds up to 3 levels deep.
   const gitDirs = await fg('**/.git', {
     cwd: absoluteRoot,
     onlyDirectories: true,
-    deep: depth + 1,
+    deep: depth,
     dot: true,
     followSymbolicLinks: false,
     ignore: ['**/node_modules'],

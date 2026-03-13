@@ -12,7 +12,7 @@
   "scripts": {
     "prepare": "husky",
     "dev": "tsx src/cli.tsx",
-    "build": "tsc",
+    "build": "tsc && node -e \"const fs = require('fs'); const file = './dist/cli.js'; let content = fs.readFileSync(file, 'utf8'); if (!content.startsWith('#!/usr/bin/env node')) { content = '#!/usr/bin/env node\\n' + content; } fs.writeFileSync(file, content); fs.chmodSync(file, 0o755);\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

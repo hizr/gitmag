@@ -77,7 +77,12 @@ export function App({ config }: AppProps) {
         process.cwd(),
         config.depth,
         (repoPath, repoName) => {
-          setScanEvents((prev) => [...prev, { type: 'found', repoPath, repoName }]);
+          setScanEvents((prev) => {
+            // Cap events array at 200 entries to avoid unbounded memory growth
+            const MAX_EVENTS = 200;
+            const newEvents = [...prev, { type: 'found' as const, repoPath, repoName }];
+            return newEvents.length > MAX_EVENTS ? newEvents.slice(-MAX_EVENTS) : newEvents;
+          });
         }
       );
       totalDirs = totalDirsScanned;
@@ -86,35 +91,64 @@ export function App({ config }: AppProps) {
 
       for (const repoPath of repoPaths) {
         const repoName = repoPath.split('/').slice(-1)[0] ?? repoPath;
-        setScanEvents((prev) => [...prev, { type: 'fetching', repoPath, repoName }]);
+        setScanEvents((prev) => {
+          const MAX_EVENTS = 200;
+          const newEvents = [...prev, { type: 'fetching' as const, repoPath, repoName }];
+          return newEvents.length > MAX_EVENTS ? newEvents.slice(-MAX_EVENTS) : newEvents;
+        });
 
-        const repo = await getRepoActivity(repoPath, windowStart);
+        try {
+          const repo = await getRepoActivity(repoPath, windowStart);
 
-        setScanEvents((prev) => [
-          ...prev,
-          {
-            type: 'fetched',
-            repoPath,
-            repoName,
-            commitCount: repo.totalCommits,
-            authorCount: repo.authors.length,
-          },
-        ]);
+          setScanEvents((prev) => {
+            const MAX_EVENTS = 200;
+            const newEvents = [
+              ...prev,
+              {
+                type: 'fetched' as const,
+                repoPath,
+                repoName,
+                commitCount: repo.totalCommits,
+                authorCount: repo.authors.length,
+              },
+            ];
+            return newEvents.length > MAX_EVENTS ? newEvents.slice(-MAX_EVENTS) : newEvents;
+          });
 
-        if (repo.totalCommits > 0 || config.all) {
-          collected.push(repo);
+          if (repo.totalCommits > 0 || config.all) {
+            collected.push(repo);
+          }
+        } catch (err: unknown) {
+          const message =
+            err instanceof Error ? err.message : 'Unknown error fetching repository activity';
+          setScanEvents((prev) => {
+            const MAX_EVENTS = 200;
+            const newEvents = [...prev, { type: 'error' as const, repoPath, repoName, message }];
+            return newEvents.length > MAX_EVENTS ? newEvents.slice(-MAX_EVENTS) : newEvents;
+          });
         }
       }
 
       const activeCount = collected.length;
-      setScanEvents((prev) => [
-        ...prev,
-        { type: 'done', totalDirs, totalRepos: repoPaths.length, activeRepos: activeCount },
-      ]);
+      setScanEvents((prev) => {
+        const MAX_EVENTS = 200;
+        const newEvents = [
+          ...prev,
+          {
+            type: 'done' as const,
+            totalDirs,
+            totalRepos: repoPaths.length,
+            activeRepos: activeCount,
+          },
+        ];
+        return newEvents.length > MAX_EVENTS ? newEvents.slice(-MAX_EVENTS) : newEvents;
+      });
 
       setRepos(collected);
       setIsScanComplete(true);
       setTimeout(() => {
+        // Clear scanEvents now that we're leaving the scanning screen
+        setScanEvents([]);
         if (collected.length === 1) {
           setSelectedRepo(collected[0]);
           setScreen('authors');

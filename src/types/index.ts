@@ -60,4 +60,5 @@ export type ScanEvent =
       commitCount: number;
       authorCount: number;
     }
+  | { type: 'error'; repoPath: string; repoName: string; message: string }
   | { type: 'done'; totalDirs: number; totalRepos: number; activeRepos: number };

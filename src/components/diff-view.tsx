@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Box, Text, useInput, useStdin, useStdout } from 'ink';
 import type { Commit, FileChange } from '../types/index.js';
 import { parseDiff } from '../utils/diff-parser.js';
@@ -102,8 +102,33 @@ export function DiffView({ repoPath: _repoPath, commit, file, rawDiff, onBack }:
   // Lines available for the diff body (leave room for header, footer, hunk headers)
   const visibleLines = Math.max(10, (stdout?.rows ?? 40) - 6);
 
-  const parsed = parseDiff(rawDiff);
+  // Memoize diff parsing to avoid re-parsing on every render/scroll
+  const parsed = useMemo(() => parseDiff(rawDiff), [rawDiff]);
   const fileDiff = parsed[0];
+
+  // Early exit for binary files
+  if (file.binary) {
+    return (
+      <Box flexDirection="column">
+        <Box marginBottom={1} flexDirection="row" gap={1}>
+          <Text bold color="yellow">
+            {commit.hash}
+          </Text>
+          <Text bold>{file.path}</Text>
+        </Box>
+        <Text color="gray">(Binary file — no text diff available)</Text>
+        <Text dimColor>Press Esc to go back.</Text>
+        {isRawModeSupported && (
+          <DiffKeyboardHandler
+            scrollOffset={0}
+            setScrollOffset={() => undefined}
+            maxOffset={0}
+            onBack={onBack}
+          />
+        )}
+      </Box>
+    );
+  }
 
   if (!fileDiff) {
     return (

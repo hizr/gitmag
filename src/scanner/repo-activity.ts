@@ -10,9 +10,13 @@ export async function getRepoActivity(repoPath: string, since: Date): Promise<Re
   const git = simpleGit(repoPath);
   const name = basename(repoPath);
 
-  // Get log with stat info since the given date
+  // Get log with stat info since the given date.
+  // --max-count caps memory usage when a repo has an unusually large number of
+  // recent commits (e.g. automated commits, monorepos with many contributors).
+  const MAX_COMMITS_PER_REPO = 500;
   const log = await git.log([
     `--since=${since.toISOString()}`,
+    `--max-count=${MAX_COMMITS_PER_REPO}`,
     '--format=%H%n%an%n%ae%n%aI%n%s%n---END---',
     '--diff-filter=ACDMRT', // skip unmerged/broken
   ]);
