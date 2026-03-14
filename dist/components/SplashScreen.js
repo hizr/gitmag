@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from 'react/jsx-runtime';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import { Spinner } from '@inkjs/ui';
 // ---------------------------------------------------------------------------
@@ -17,16 +17,9 @@ const ASCII_LETTERS = {
 const WORD = ['g', 'i', 't', 'm', 'a', 'g'];
 const ASCII_ROWS = 6;
 const SCRAMBLE_CHARS = '@#$%!?*^~<>|/\\=+[]{}';
-const STATUS_MESSAGES = [
-  'Scanning repositories...',
-  'Indexing commits...',
-  'Analyzing activity...',
-  'Preparing digest...',
-];
 // Resolve times (ms) for each letter — spread evenly across 0–2200ms
 const RESOLVE_TIMES = [200, 600, 1000, 1400, 1800, 2200];
 const ANIM_INTERVAL_MS = 80;
-const STATUS_INTERVAL_MS = 700;
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -42,20 +35,20 @@ function scrambledRows(letterKey) {
       .join('')
   );
 }
-export function SplashScreen({ onComplete, duration = 3000 }) {
+export function SplashScreen({ onComplete, duration = 3000, scanProgress }) {
   const { stdout } = useStdout();
   const termCols = stdout.columns ?? 80;
   // Per-letter display rows (6 strings each)
   const [letterRows, setLetterRows] = useState(() => WORD.map((letter) => scrambledRows(letter)));
   const [resolved, setResolved] = useState(() => WORD.map(() => false));
-  const [statusIndex, setStatusIndex] = useState(0);
+  // True once the animation has played through its full duration
+  const [animationDone, setAnimationDone] = useState(false);
+  // Stable ref so the scan-done effect always sees the latest onComplete
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  // Animation effect — runs scramble/resolve, then freezes at duration
   useEffect(() => {
     const startTime = Date.now();
-    // Fire onComplete after exact duration
-    const doneTimer = setTimeout(() => {
-      onComplete();
-    }, duration);
-    // Animation tick — resolves and scrambles letters
     const animTimer = setInterval(() => {
       const elapsed = Date.now() - startTime;
       setResolved((prev) =>
@@ -74,16 +67,25 @@ export function SplashScreen({ onComplete, duration = 3000 }) {
         })
       );
     }, ANIM_INTERVAL_MS);
-    // Status message cycle
-    const statusTimer = setInterval(() => {
-      setStatusIndex((prev) => (prev + 1) % STATUS_MESSAGES.length);
-    }, STATUS_INTERVAL_MS);
+    // Mark animation complete after duration; clear anim interval — frame freezes
+    const doneTimer = setTimeout(() => {
+      clearInterval(animTimer);
+      // Ensure all letters are fully resolved in the frozen frame
+      setResolved(WORD.map(() => true));
+      setLetterRows(WORD.map((letter) => ASCII_LETTERS[letter] ?? scrambledRows(letter)));
+      setAnimationDone(true);
+    }, duration);
     return () => {
       clearTimeout(doneTimer);
       clearInterval(animTimer);
-      clearInterval(statusTimer);
     };
-  }, [onComplete, duration]);
+  }, [duration]);
+  // Gate onComplete: fire only when both animation AND scan are done
+  useEffect(() => {
+    if (animationDone && scanProgress.done) {
+      onCompleteRef.current();
+    }
+  }, [animationDone, scanProgress.done]);
   // Measure total art width for centering hint
   const totalArtWidth = WORD.reduce((sum, letter, idx) => {
     const width = (ASCII_LETTERS[letter]?.[0] ?? '').length;
@@ -129,11 +131,7 @@ export function SplashScreen({ onComplete, duration = 3000 }) {
         gap: 1,
         children: [
           _jsx(Spinner, {}),
-          _jsx(Text, {
-            color: 'white',
-            dimColor: true,
-            children: STATUS_MESSAGES[statusIndex] ?? STATUS_MESSAGES[0],
-          }),
+          _jsx(Text, { color: 'white', dimColor: true, children: scanProgress.phase }),
         ],
       }),
       _jsx(Box, {
