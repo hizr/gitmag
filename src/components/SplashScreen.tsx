@@ -60,10 +60,6 @@ interface SplashScreenProps {
 export function SplashScreen({ onComplete, duration = 3000, scanProgress }: SplashScreenProps) {
   const { stdout } = useStdout();
   const termCols = stdout.columns ?? 80;
-  const termRows = stdout.rows ?? 24;
-
-  const artHeight = ASCII_ROWS + 3; // 6 rows + spacing + spinner row
-  const verticalPadding = Math.floor((termRows - artHeight) / 2);
 
   // Per-letter display rows (6 strings each)
   const [letterRows, setLetterRows] = useState<string[][]>(() =>
@@ -126,12 +122,10 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
   return (
     <Box
       width={termCols}
-      height={termRows}
       flexDirection="column"
       alignItems="center"
       justifyContent="center"
-      paddingX={Math.floor((termCols - totalArtWidth) / 2)}
-      paddingY={verticalPadding}
+      paddingY={4}
     >
       {/* ASCII art block */}
       <Box flexDirection="column" alignItems="center">
