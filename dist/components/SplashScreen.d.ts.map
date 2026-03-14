@@ -1,1 +1,0 @@
-{"version":3,"file":"SplashScreen.d.ts","sourceRoot":"","sources":["../../src/components/SplashScreen.tsx"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,eAAe,CAAC;AA+ClD,UAAU,iBAAiB;IACzB,UAAU,EAAE,MAAM,IAAI,CAAC;IACvB,QAAQ,CAAC,EAAE,MAAM,CAAC;IAClB,YAAY,EAAE,YAAY,CAAC;CAC5B;AAED,wBAAgB,YAAY,CAAC,EAAE,UAAU,EAAE,QAAe,EAAE,YAAY,EAAE,EAAE,iBAAiB,2CAqH5F"}
