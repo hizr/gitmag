@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import { Spinner } from '@inkjs/ui';
 import type { ScanProgress } from '../Scanner.js';
+import { useCompletionGate } from '../hooks/useCompletionGate.js';
 
 // ---------------------------------------------------------------------------
 // ASCII art — each letter is 6 rows tall
@@ -67,10 +68,6 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
   // True once the animation has played through its full duration
   const [animationDone, setAnimationDone] = useState(false);
 
-  // Stable ref so the scan-done effect always sees the latest onComplete
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
-
   // Animation effect — runs scramble/resolve, then freezes at duration
   useEffect(() => {
     const startTime = Date.now();
@@ -112,11 +109,7 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
   }, [duration]);
 
   // Gate onComplete: fire only when both animation AND scan are done
-  useEffect(() => {
-    if (animationDone && scanProgress.done) {
-      onCompleteRef.current();
-    }
-  }, [animationDone, scanProgress.done]);
+  useCompletionGate({ animationDone, scanDone: scanProgress.done, onComplete });
 
   // Measure total art width for centering hint
   const totalArtWidth = WORD.reduce((sum, letter, idx) => {
