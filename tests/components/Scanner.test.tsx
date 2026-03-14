@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useScanner } from '../../src/Scanner.js';
+import { useScanner } from '../../src/components/Scanner.js';
 
 describe('useScanner', () => {
   beforeEach(() => {

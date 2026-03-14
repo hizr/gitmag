@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Box, Text } from 'ink';
 import { SplashScreen } from './components/SplashScreen.js';
-import { useScanner } from './Scanner.js';
+import { useScanner } from './components/Scanner.js';
 
 type Screen = 'splash' | 'ready';
 

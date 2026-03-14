@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import { Spinner } from '@inkjs/ui';
-import type { ScanProgress } from '../Scanner.js';
+import type { ScanProgress } from './Scanner.js';
 import { useCompletionGate } from '../hooks/useCompletionGate.js';
 
 // ---------------------------------------------------------------------------
