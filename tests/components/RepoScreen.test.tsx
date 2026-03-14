@@ -10,9 +10,6 @@ describe('RepoScreen', () => {
     done: true,
   };
 
-  const mockOnSelect = vi.fn();
-  const mockOnBack = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -21,8 +18,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         scanProgress: mockScanProgress,
-        onSelect: mockOnSelect,
-        onBack: mockOnBack,
+        selectedIdx: 0,
       })
     );
     const output = lastFrame();
@@ -33,8 +29,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         scanProgress: mockScanProgress,
-        onSelect: mockOnSelect,
-        onBack: mockOnBack,
+        selectedIdx: 0,
       })
     );
     const output = lastFrame();
@@ -47,8 +42,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         scanProgress: mockScanProgress,
-        onSelect: mockOnSelect,
-        onBack: mockOnBack,
+        selectedIdx: 0,
       })
     );
     const output = lastFrame();
@@ -61,8 +55,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         scanProgress: mockScanProgress,
-        onSelect: mockOnSelect,
-        onBack: mockOnBack,
+        selectedIdx: 0,
       })
     );
     const output = lastFrame();
@@ -77,8 +70,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         scanProgress: inProgress,
-        onSelect: mockOnSelect,
-        onBack: mockOnBack,
+        selectedIdx: 0,
       })
     );
     expect(lastFrame()).toContain('gitmag');
@@ -89,8 +81,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         scanProgress: mockScanProgress,
-        onSelect: mockOnSelect,
-        onBack: mockOnBack,
+        selectedIdx: 0,
       })
     );
     const output = lastFrame();
@@ -102,23 +93,20 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         scanProgress: mockScanProgress,
-        onSelect: mockOnSelect,
-        onBack: mockOnBack,
+        selectedIdx: 0,
       })
     );
     const output = lastFrame();
     expect(output).toMatch(/j|k|arrow/i);
   });
 
-  it('accepts onSelect callback prop', () => {
+  it('accepts selectedIdx prop', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         scanProgress: mockScanProgress,
-        onSelect: mockOnSelect,
-        onBack: mockOnBack,
+        selectedIdx: 1,
       })
     );
-    expect(mockOnSelect).toBeDefined();
     expect(lastFrame()).toContain('gitmag');
   });
 });
