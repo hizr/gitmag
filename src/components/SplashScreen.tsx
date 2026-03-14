@@ -71,6 +71,9 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
   // True once the animation has played through its full duration
   const [animationDone, setAnimationDone] = useState(false);
 
+  // True when fade-out is triggered (dimColor effect before unmount)
+  const [exiting, setExiting] = useState(false);
+
   // Animation effect — runs scramble/resolve, then freezes at duration
   useEffect(() => {
     const startTime = Date.now();
@@ -112,7 +115,15 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
   }, [duration]);
 
   // Gate onComplete: fire only when both animation AND scan are done
-  useCompletionGate({ animationDone, scanDone: scanProgress.done, onComplete });
+  useCompletionGate({
+    animationDone,
+    scanDone: scanProgress.done,
+    onComplete: () => {
+      // Trigger fade-out effect on next tick, then call the real onComplete
+      setExiting(true);
+      setTimeout(onComplete, 0);
+    },
+  });
 
   // Measure total art width for centering hint
   const totalArtWidth = WORD.reduce((sum, letter, idx) => {
@@ -138,7 +149,11 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
               const gap = letterIdx < WORD.length - 1 ? ' ' : '';
               const color = isResolved ? RAINBOW_COLORS[letterIdx] : 'green';
               return (
-                <Text key={`${letter}-${letterIdx}-${rowIdx}`} color={color} dimColor={!isResolved}>
+                <Text
+                  key={`${letter}-${letterIdx}-${rowIdx}`}
+                  color={color}
+                  dimColor={!isResolved || exiting}
+                >
                   {rowText + gap}
                 </Text>
               );
@@ -153,7 +168,7 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
       {/* Spinner + scan-driven status text */}
       <Box flexDirection="row" gap={1}>
         <Spinner />
-        <Text color="white" dimColor>
+        <Text color="white" dimColor={exiting || !scanProgress.done}>
           {scanProgress.phase}
         </Text>
       </Box>

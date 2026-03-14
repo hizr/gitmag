@@ -1,22 +1,17 @@
 import { useState } from 'react';
-import { Box, Text } from 'ink';
 import { SplashScreen } from './components/SplashScreen.js';
+import { RepoScreen } from './components/RepoScreen.js';
 import { useScanner } from './components/Scanner.js';
 
-type Screen = 'splash' | 'ready';
+type Screen = 'splash' | 'repo';
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('splash');
   const scanProgress = useScanner();
 
   if (screen === 'splash') {
-    return <SplashScreen onComplete={() => setScreen('ready')} scanProgress={scanProgress} />;
+    return <SplashScreen onComplete={() => setScreen('repo')} scanProgress={scanProgress} />;
   }
 
-  // Stub — future screens will be wired here
-  return (
-    <Box padding={2}>
-      <Text color="cyan">Ready.</Text>
-    </Box>
-  );
+  return <RepoScreen scanProgress={scanProgress} />;
 }
