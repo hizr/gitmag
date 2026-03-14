@@ -5,7 +5,15 @@ import prettierConfig from 'eslint-config-prettier';
 
 export default [
   {
-    ignores: ['node_modules/', 'dist/', '.husky/', '.opencode/', '*.config.js', '*.config.ts'],
+    ignores: [
+      'node_modules/',
+      'dist/',
+      '.husky/',
+      '.opencode/',
+      '*.config.js',
+      '*.config.ts',
+      '*.config.d.ts',
+    ],
   },
   {
     files: ['**/*.{js,jsx,ts,tsx}'],

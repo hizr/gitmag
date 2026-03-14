@@ -101,27 +101,30 @@ Follow the mandatory feature implementation pipeline (from `ecc-universal`):
 - Use **Zod** (or equivalent schema library) for input validation at system
   boundaries. Never trust external data.
 - Use spread for immutable updates:
+
   ```typescript
   // Correct
-  return { ...user, name }
+  return { ...user, name };
 
   // Wrong
-  user.name = name; return user
+  user.name = name;
+  return user;
   ```
+
 - Prefer `interface` for public API shapes; `type` for unions/intersections.
 - Prefer `const` over `let`; never use `var`.
 - Export named exports; avoid default exports in library/utility code.
 
 ### Naming Conventions
 
-| Artifact | Convention | Example |
-|---|---|---|
-| Files (TS/JS) | `kebab-case` | `git-parser.ts` |
-| React components | `PascalCase` file + export | `ArticleCard.tsx` |
-| Variables / functions | `camelCase` | `fetchArticle` |
-| Constants | `UPPER_SNAKE_CASE` | `MAX_RETRIES` |
-| Types / Interfaces | `PascalCase` | `ArticleMetadata` |
-| CSS classes | `kebab-case` | `article-card` |
+| Artifact              | Convention                 | Example           |
+| --------------------- | -------------------------- | ----------------- |
+| Files (TS/JS)         | `kebab-case`               | `git-parser.ts`   |
+| React components      | `PascalCase` file + export | `ArticleCard.tsx` |
+| Variables / functions | `camelCase`                | `fetchArticle`    |
+| Constants             | `UPPER_SNAKE_CASE`         | `MAX_RETRIES`     |
+| Types / Interfaces    | `PascalCase`               | `ArticleMetadata` |
+| CSS classes           | `kebab-case`               | `article-card`    |
 
 ### Imports
 
@@ -168,6 +171,7 @@ fix CRITICAL issues before continuing, and rotate any exposed secrets.
 **Types:** `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
 
 **PR workflow:**
+
 1. Use `git diff [base-branch]...HEAD` to review all changes in the branch.
 2. Write a comprehensive PR summary including a test plan.
 3. Push with `git push -u origin <branch>`.
@@ -180,17 +184,17 @@ fix CRITICAL issues before continuing, and rotate any exposed secrets.
 Agents live in `~/.claude/agents/` (installed via `ecc-universal`).
 Invoke them proactively — do not wait for the user to ask.
 
-| Agent | When to use |
-|---|---|
-| `planner` | Complex features, before writing any code |
-| `architect` | Architectural / system-design decisions |
-| `tdd-guide` | Any new feature or bug fix (enforce TDD) |
-| `code-reviewer` | After writing or modifying code |
-| `security-reviewer` | Before every commit |
-| `build-error-resolver` | When the build fails |
-| `e2e-runner` | Critical user flows |
-| `refactor-cleaner` | Dead code removal and cleanup |
-| `doc-updater` | Keeping documentation current |
+| Agent                  | When to use                               |
+| ---------------------- | ----------------------------------------- |
+| `planner`              | Complex features, before writing any code |
+| `architect`            | Architectural / system-design decisions   |
+| `tdd-guide`            | Any new feature or bug fix (enforce TDD)  |
+| `code-reviewer`        | After writing or modifying code           |
+| `security-reviewer`    | Before every commit                       |
+| `build-error-resolver` | When the build fails                      |
+| `e2e-runner`           | Critical user flows                       |
+| `refactor-cleaner`     | Dead code removal and cleanup             |
+| `doc-updater`          | Keeping documentation current             |
 
 Run independent agents **in parallel** whenever possible to save time.
 
