@@ -2,6 +2,9 @@
   "name": "gitmag",
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "gitmag": "./dist/index.js"
+  },
   "scripts": {
     "prepare": "husky",
     "dev": "tsx src/index.ts",
@@ -37,7 +40,7 @@
     "@commitlint/cli": "^20.4.4",
     "@commitlint/config-conventional": "^20.4.4",
     "@eslint/js": "^10.0.1",
-    "@types/react": "^18.3.28",
+    "@types/react": "^18.2.79",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
     "eslint": "^10.0.3",
