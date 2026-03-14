@@ -22,6 +22,8 @@ const WORD: string[] = ['g', 'i', 't', 'm', 'a', 'g'];
 const ASCII_ROWS = 6;
 const SCRAMBLE_CHARS = '@#$%!?*^~<>|/\\=+[]{}';
 
+const RAINBOW_COLORS = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta'] as const;
+
 // Resolve times (ms) for each letter — spread evenly across 0–2200ms
 const RESOLVE_TIMES = [200, 600, 1000, 1400, 1800, 2200];
 
@@ -133,12 +135,9 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
               const isResolved = resolved[letterIdx] ?? false;
               const rowText = (letterRows[letterIdx] ?? [])[rowIdx] ?? '';
               const gap = letterIdx < WORD.length - 1 ? ' ' : '';
+              const color = isResolved ? RAINBOW_COLORS[letterIdx] : 'green';
               return (
-                <Text
-                  key={`${letter}-${letterIdx}-${rowIdx}`}
-                  color={isResolved ? 'cyan' : 'green'}
-                  dimColor={!isResolved}
-                >
+                <Text key={`${letter}-${letterIdx}-${rowIdx}`} color={color} dimColor={!isResolved}>
                   {rowText + gap}
                 </Text>
               );
