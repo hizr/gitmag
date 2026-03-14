@@ -1,4 +1,4 @@
-import { Box, Text } from 'ink';
+import { Box, Text, useStdout } from 'ink';
 import type { ScanProgress } from './Scanner.js';
 import { MOCK_REPOS } from '../data/mockRepos.js';
 
@@ -8,8 +8,18 @@ interface RepoScreenProps {
 }
 
 export function RepoScreen({ scanProgress, selectedIdx }: RepoScreenProps) {
+  const { stdout } = useStdout();
+  const termCols = stdout.columns ?? 80;
+  const termRows = stdout.rows ?? 24;
+
   return (
-    <Box flexDirection="column" padding={1}>
+    <Box
+      flexDirection="column"
+      width={Math.max(termCols, 80)}
+      height={Math.max(termRows, 24)}
+      paddingX={1}
+      paddingY={1}
+    >
       {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="cyan">

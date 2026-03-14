@@ -51,7 +51,16 @@ export function App() {
   });
 
   if (screen === 'splash') {
-    return <SplashScreen onComplete={() => setScreen('router')} scanProgress={scanProgress} />;
+    return (
+      <SplashScreen
+        onComplete={() => {
+          // Clear terminal and transition to router screen
+          process.stdout.write('\u001B[2J\u001B[0f');
+          setScreen('router');
+        }}
+        scanProgress={scanProgress}
+      />
+    );
   }
 
   if (current.name === 'repo') {

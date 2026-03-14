@@ -119,9 +119,9 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
     animationDone,
     scanDone: scanProgress.done,
     onComplete: () => {
-      // Trigger fade-out effect on next tick, then call the real onComplete
+      // Trigger fade-out effect, wait for it to render before transitioning
       setExiting(true);
-      setTimeout(onComplete, 0);
+      setTimeout(onComplete, 500);
     },
   });
 
@@ -133,8 +133,8 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
 
   return (
     <Box
-      width={termCols}
-      height={termRows}
+      width={Math.max(termCols, 80)}
+      height={Math.max(termRows, 24)}
       flexDirection="column"
       alignItems="center"
       justifyContent="center"

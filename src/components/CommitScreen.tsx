@@ -1,4 +1,4 @@
-import { Box, Text } from 'ink';
+import { Box, Text, useStdout } from 'ink';
 import type { RepoEntry } from '../data/mockRepos.js';
 
 interface CommitScreenProps {
@@ -6,8 +6,18 @@ interface CommitScreenProps {
 }
 
 export function CommitScreen({ repo }: CommitScreenProps) {
+  const { stdout } = useStdout();
+  const termCols = stdout.columns ?? 80;
+  const termRows = stdout.rows ?? 24;
+
   return (
-    <Box flexDirection="column" padding={1}>
+    <Box
+      flexDirection="column"
+      width={Math.max(termCols, 80)}
+      height={Math.max(termRows, 24)}
+      paddingX={1}
+      paddingY={1}
+    >
       {/* Header with breadcrumb */}
       <Box marginBottom={1}>
         <Text bold color="cyan">
