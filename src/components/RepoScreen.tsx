@@ -1,43 +1,13 @@
-import { useState } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
 import type { ScanProgress } from './Scanner.js';
-import type { RepoEntry } from '../data/mockRepos.js';
 import { MOCK_REPOS } from '../data/mockRepos.js';
 
 interface RepoScreenProps {
   scanProgress: ScanProgress;
-  onSelect: (repo: RepoEntry) => void;
-  onBack: () => void;
+  selectedIdx: number;
 }
 
-export function RepoScreen({ scanProgress, onSelect, onBack }: RepoScreenProps) {
-  const [selectedIdx, setSelectedIdx] = useState(0);
-
-  useInput((input, key) => {
-    // Navigate down: ArrowDown or 'j'
-    if (key.downArrow || input === 'j') {
-      setSelectedIdx((prev) => Math.min(prev + 1, MOCK_REPOS.length - 1));
-    }
-
-    // Navigate up: ArrowUp or 'k'
-    if (key.upArrow || input === 'k') {
-      setSelectedIdx((prev) => Math.max(prev - 1, 0));
-    }
-
-    // Select: Enter
-    if (key.return) {
-      const selectedRepo = MOCK_REPOS[selectedIdx];
-      if (selectedRepo) {
-        onSelect(selectedRepo);
-      }
-    }
-
-    // Back: Escape
-    if (key.escape) {
-      onBack();
-    }
-  });
-
+export function RepoScreen({ scanProgress, selectedIdx }: RepoScreenProps) {
   return (
     <Box flexDirection="column" padding={1}>
       {/* Header */}

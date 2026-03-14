@@ -1,19 +1,11 @@
-import { Box, Text, useInput } from 'ink';
+import { Box, Text } from 'ink';
 import type { RepoEntry } from '../data/mockRepos.js';
 
 interface CommitScreenProps {
   repo: RepoEntry;
-  onBack: () => void;
 }
 
-export function CommitScreen({ repo, onBack }: CommitScreenProps) {
-  useInput((_input, key) => {
-    // Back: Escape
-    if (key.escape) {
-      onBack();
-    }
-  });
-
+export function CommitScreen({ repo }: CommitScreenProps) {
   return (
     <Box flexDirection="column" padding={1}>
       {/* Header with breadcrumb */}
