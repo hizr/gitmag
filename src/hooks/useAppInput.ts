@@ -22,9 +22,14 @@ interface AppInputProps {
   onSelect?: () => void;
 
   /**
-   * Called on Escape key
+   * Called on Backspace or Delete key
    */
   onBack?: () => void;
+
+  /**
+   * Called on Tab key — used to cycle focus between panels
+   */
+  onTab?: () => void;
 }
 
 /**
@@ -33,9 +38,16 @@ interface AppInputProps {
  * - Global quit ('q') from any screen
  * - Navigation (arrows, j/k) on router screens
  * - Selection (Enter) on router screens
- * - Back (Escape) on router screens
+ * - Back (Backspace/Delete) on router screens
  */
-export function useAppInput({ screen, onUp, onDown, onSelect, onBack }: AppInputProps): void {
+export function useAppInput({
+  screen,
+  onUp,
+  onDown,
+  onSelect,
+  onBack,
+  onTab,
+}: AppInputProps): void {
   const { exit } = useApp();
 
   useInput(
@@ -58,8 +70,10 @@ export function useAppInput({ screen, onUp, onDown, onSelect, onBack }: AppInput
         onDown?.();
       } else if (key.return) {
         onSelect?.();
-      } else if (key.escape) {
+      } else if (key.backspace || key.delete) {
         onBack?.();
+      } else if (key.tab) {
+        onTab?.();
       }
     },
     { isActive: screen === 'router' }

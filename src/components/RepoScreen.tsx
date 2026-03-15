@@ -61,7 +61,7 @@ export function RepoScreen({ scanProgress, selectedIdx }: RepoScreenProps) {
       {/* Footer with instructions */}
       <Box marginTop={1}>
         <Text color="gray" dimColor>
-          j/k (or arrows) to navigate • enter to select • esc to go back • q to quit
+          j/k (or arrows) to navigate • enter to select • backspace to go back • q to quit
         </Text>
       </Box>
     </Box>
