@@ -35,7 +35,7 @@ export function CommitScreen({ repo }: CommitScreenProps) {
       {/* Commit list */}
       <Box flexDirection="column">
         {repo.commits.map((commit, idx) => (
-          <Box key={idx} marginBottom={1}>
+          <Box key={commit.hash} marginBottom={1}>
             <Text color="green">{commit.hash}</Text>
             <Text> </Text>
             <Text>{commit.message}</Text>
