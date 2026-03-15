@@ -38,7 +38,7 @@ export function RepoScreen({ scanProgress, selectedIdx }: RepoScreenProps) {
         {MOCK_REPOS.map((repo, repoIdx) => {
           const isSelected = repoIdx === selectedIdx;
           return (
-            <Box key={repoIdx} flexDirection="column" marginBottom={1}>
+            <Box key={repo.path} flexDirection="column" marginBottom={1}>
               {/* Repo path — highlighted if selected */}
               <Text color={isSelected ? 'bgCyan' : 'yellow'} inverse={isSelected}>
                 {isSelected ? '> ' : '  '}
@@ -46,8 +46,8 @@ export function RepoScreen({ scanProgress, selectedIdx }: RepoScreenProps) {
               </Text>
 
               {/* Commits for this repo */}
-              {repo.commits.map((commit, commitIdx) => (
-                <Box key={commitIdx} marginLeft={2}>
+              {repo.commits.map((commit) => (
+                <Box key={commit.hash} marginLeft={2}>
                   <Text color="green">{commit.hash}</Text>
                   <Text> </Text>
                   <Text>{commit.message}</Text>
