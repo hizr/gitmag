@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import { Spinner } from '@inkjs/ui';
 import type { ScanProgress } from './Scanner.js';
@@ -74,6 +74,9 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
   // True when fade-out is triggered (dimColor effect before unmount)
   const [exiting, setExiting] = useState(false);
 
+  // Store timeout ID to clear it on unmount
+  const completionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Animation effect — runs scramble/resolve, then freezes at duration
   useEffect(() => {
     const startTime = Date.now();
@@ -121,9 +124,18 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
     onComplete: () => {
       // Trigger fade-out effect, wait for it to render before transitioning
       setExiting(true);
-      setTimeout(onComplete, 500);
+      completionTimeoutRef.current = setTimeout(onComplete, 500);
     },
   });
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (completionTimeoutRef.current !== null) {
+        clearTimeout(completionTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Measure total art width for centering hint
   const totalArtWidth = WORD.reduce((sum, letter, idx) => {
