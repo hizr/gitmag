@@ -33,7 +33,7 @@ describe('useQuit', () => {
   });
 
   it('calls exit when q is pressed', () => {
-    renderHook(() => useQuit());
+    renderHook(() => useQuit(true));
 
     expect(capturedInputHandler).not.toBeNull();
     capturedInputHandler?.('q', {});
@@ -42,7 +42,7 @@ describe('useQuit', () => {
   });
 
   it('does not call exit for other keys', () => {
-    renderHook(() => useQuit());
+    renderHook(() => useQuit(true));
 
     capturedInputHandler?.('j', {});
     capturedInputHandler?.('k', {});
@@ -52,8 +52,17 @@ describe('useQuit', () => {
   });
 
   it('registers input handler with useInput', () => {
-    renderHook(() => useQuit());
+    renderHook(() => useQuit(true));
 
     expect(vi.mocked(ink.useInput)).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call exit when canQuit is false', () => {
+    renderHook(() => useQuit(false));
+
+    // Even if 'q' is pressed, exit should not be called when quitting is disabled.
+    capturedInputHandler?.('q', {});
+
+    expect(mockExit).not.toHaveBeenCalled();
   });
 });
