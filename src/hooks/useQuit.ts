@@ -1,4 +1,5 @@
 import { useInput, useApp } from 'ink';
+import { useCallback } from 'react';
 
 /**
  * Global quit hook that exits the app when 'q' is pressed.
@@ -8,12 +9,18 @@ export function useQuit(canQuit: boolean): void {
   const { exit } = useApp();
 
   // Only set up the input listener if we're allowed to quit
-  useInput(
-    (input) => {
+  const handleInput = useCallback(
+    (input: string) => {
+      if (!canQuit) {
+        return;
+      }
+
       if (input === 'q') {
         exit();
       }
     },
-    { isActive: canQuit }
+    [canQuit, exit]
   );
+
+  useInput(handleInput, { isActive: canQuit });
 }
