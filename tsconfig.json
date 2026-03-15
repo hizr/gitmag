@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "jsx": "react-jsx",
     "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
     "allowJs": true,
@@ -25,5 +26,10 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist"],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  }
 }

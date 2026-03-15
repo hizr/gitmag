@@ -2,6 +2,9 @@
   "name": "gitmag",
   "version": "0.1.0",
   "type": "module",
+  "bin": {
+    "gitmag": "./dist/index.js"
+  },
   "scripts": {
     "prepare": "husky",
     "dev": "tsx src/index.ts",
@@ -37,14 +40,19 @@
     "@commitlint/cli": "^20.4.4",
     "@commitlint/config-conventional": "^20.4.4",
     "@eslint/js": "^10.0.1",
-    "@types/react": "^18.3.28",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.5.0",
+    "@types/react": "^18.2.79",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
+    "ink-testing-library": "^4.0.0",
+    "jsdom": "^28.1.0",
     "lint-staged": "^16.3.3",
     "prettier": "^3.8.1",
+    "react-dom": "^18.3.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
