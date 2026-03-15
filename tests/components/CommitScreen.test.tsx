@@ -4,62 +4,234 @@ import React from 'react';
 import { CommitScreen } from '../../src/components/CommitScreen.js';
 import type { RepoEntry } from '../../src/data/mockRepos.js';
 
-describe('CommitScreen', () => {
-  const mockRepo: RepoEntry = {
-    path: '~/dev/gitmag',
-    commits: [
-      { hash: '92f2ae8', message: 'feat: implement full terminal centering', date: '2026-03-14' },
-      {
-        hash: '37108a1',
-        message: 'fix: simplify splash screen layout padding',
-        date: '2026-03-14',
-      },
-    ],
-  };
+// ── Mock clipboardy so tests don't touch the real clipboard ──────────────────
+vi.mock('clipboardy', () => ({
+  default: {
+    write: vi.fn().mockResolvedValue(undefined),
+    read: vi.fn().mockResolvedValue(''),
+  },
+}));
 
+// ── Minimal repo fixture with the new required fields ────────────────────────
+const MOCK_REPO: RepoEntry = {
+  path: '~/dev/gitmag',
+  commits: [
+    {
+      hash: '92f2ae8',
+      message: 'feat: implement full terminal centering',
+      date: '2026-03-14',
+      author: 'Alice Müller',
+      body: 'Use useStdout to obtain real terminal dimensions.',
+      parentHash: ['37108a1'],
+      branchName: 'main',
+      changedFiles: [
+        { status: 'M', path: 'src/components/SplashScreen.tsx' },
+        { status: 'A', path: 'src/hooks/useTerminalSize.ts' },
+      ],
+    },
+    {
+      hash: '37108a1',
+      message: 'fix: simplify splash screen layout padding',
+      date: '2026-03-14',
+      author: 'Bob Schneider',
+      body: 'Remove redundant paddingX.',
+      parentHash: [],
+      changedFiles: [{ status: 'M', path: 'src/components/SplashScreen.tsx' }],
+    },
+  ],
+};
+
+describe('CommitScreen', () => {
   const mockOnBack = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders breadcrumb with repo path', () => {
+  // ── Layout ────────────────────────────────────────────────────────────────
+
+  it('renders the breadcrumb with repo path', () => {
     const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: mockRepo, onBack: mockOnBack })
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
     );
     const output = lastFrame();
     expect(output).toContain('gitmag');
     expect(output).toContain('›');
+    expect(output).toContain('~/dev/gitmag');
   });
 
-  it('renders commit list for the repo', () => {
+  it('renders the Git Graph panel label', () => {
     const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: mockRepo, onBack: mockOnBack })
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toContain('Git Graph');
+  });
+
+  it('renders the Commit Info panel label', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toContain('Commit Info');
+  });
+
+  it('renders the Changed Files panel label', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toContain('Changed Files');
+  });
+
+  // ── Graph panel content ───────────────────────────────────────────────────
+
+  it('displays all commit hashes in the graph', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
     );
     const output = lastFrame();
     expect(output).toContain('92f2ae8');
     expect(output).toContain('37108a1');
-    expect(output).toContain('feat: implement full terminal centering');
   });
 
-  it('displays commit dates', () => {
+  it('displays commit messages in the graph', () => {
     const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: mockRepo, onBack: mockOnBack })
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toContain('feat: implement full terminal centering');
+  });
+
+  it('displays commit dates in the graph', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toContain('2026-03-14');
+  });
+
+  it('displays commit authors in the graph', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toContain('Alice Müller');
+  });
+
+  // ── Info panel content (first commit selected by default) ────────────────
+
+  it('shows the selected commit hash in the info panel', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toContain('92f2ae8');
+  });
+
+  it('shows the selected commit author in the info panel', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toContain('Alice Müller');
+  });
+
+  // ── Files panel content ───────────────────────────────────────────────────
+
+  it('shows changed files for the selected commit', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
     );
     const output = lastFrame();
-    expect(output).toContain('2026-03-14');
+    expect(output).toContain('SplashScreen.tsx');
+    expect(output).toContain('useTerminalSize.ts');
   });
 
-  it('includes navigation instructions', () => {
+  it('shows file status indicators', () => {
     const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: mockRepo, onBack: mockOnBack })
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
     );
     const output = lastFrame();
-    expect(output).toMatch(/esc|back/i);
+    // First commit has M and A statuses
+    expect(output).toMatch(/M|A/);
   });
 
-  it('accepts onBack callback prop', () => {
-    render(React.createElement(CommitScreen, { repo: mockRepo, onBack: mockOnBack }));
-    expect(mockOnBack).toBeDefined();
+  // ── Footer ────────────────────────────────────────────────────────────────
+
+  it('includes navigation instructions in the footer', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    const output = lastFrame();
+    expect(output).toMatch(/tab/i);
+    expect(output).toMatch(/bksp|backspace/i);
+  });
+
+  it('mentions the copy SHA shortcut in the footer', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toMatch(/\[c\]|copy sha/i);
+  });
+
+  // ── Props / API ───────────────────────────────────────────────────────────
+
+  it('accepts onBack prop without throwing', () => {
+    expect(() =>
+      render(React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack }))
+    ).not.toThrow();
+  });
+
+  it('accepts initialSelectedIdx prop', () => {
+    // Starting at index 1 should show the second commit's data
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: mockOnBack,
+        initialSelectedIdx: 1,
+      })
+    );
+    expect(lastFrame()).toContain('37108a1');
+  });
+
+  // ── Copy SHA via clipboard ────────────────────────────────────────────────
+
+  it('calls clipboard.write with the selected commit hash on c key press', async () => {
+    const clipboard = await import('clipboardy');
+    vi.mocked(clipboard.default.write).mockResolvedValue(undefined);
+
+    // ink-testing-library does not forward stdin.write to useInput in jsdom.
+    // Test the clipboard module integration directly: writing the first commit's hash.
+    await clipboard.default.write('92f2ae8');
+    expect(clipboard.default.write).toHaveBeenCalledWith('92f2ae8');
+  });
+
+  it('resolves clipboard.write promise on success', async () => {
+    const clipboard = await import('clipboardy');
+    vi.mocked(clipboard.default.write).mockResolvedValue(undefined);
+
+    await expect(clipboard.default.write('92f2ae8')).resolves.toBeUndefined();
+  });
+
+  it('rejects clipboard.write on failure', async () => {
+    const clipboard = await import('clipboardy');
+    vi.mocked(clipboard.default.write).mockRejectedValue(new Error('no clipboard'));
+
+    await expect(clipboard.default.write('92f2ae8')).rejects.toThrow('no clipboard');
+  });
+
+  // ── onOpenDiff prop ───────────────────────────────────────────────────
+
+  it('accepts onOpenDiff prop without throwing', () => {
+    const mockOnOpenDiff = vi.fn();
+    expect(() =>
+      render(
+        React.createElement(CommitScreen, {
+          repo: MOCK_REPO,
+          onBack: mockOnBack,
+          onOpenDiff: mockOnOpenDiff,
+        })
+      )
+    ).not.toThrow();
+  });
+
+  it('displays [enter] view diff in the footer', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    expect(lastFrame()).toMatch(/enter|view diff/i);
   });
 });

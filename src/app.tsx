@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { SplashScreen } from './components/SplashScreen.js';
 import { RepoScreen } from './components/RepoScreen.js';
 import { CommitScreen } from './components/CommitScreen.js';
+import { FileDiffScreen } from './components/FileDiffScreen.js';
 import { useScanner } from './components/Scanner.js';
 import { useAppInput } from './hooks/useAppInput.js';
 import { MOCK_REPOS } from './data/mockRepos.js';
-import type { RepoEntry } from './data/mockRepos.js';
+import type { RepoEntry, CommitEntry, ChangedFile } from './data/mockRepos.js';
 
-export type Route = { name: 'repo' } | { name: 'commit'; repoPath: string; repo: RepoEntry };
+export type Route =
+  | { name: 'repo' }
+  | { name: 'commit'; repoPath: string; repo: RepoEntry }
+  | { name: 'diff'; repo: RepoEntry; commit: CommitEntry; file: ChangedFile };
 
 export function App() {
   const [screen, setScreen] = useState<'splash' | 'router'>('splash');
@@ -21,20 +25,21 @@ export function App() {
 
   // Centralized input handler for navigation, selection, and quit
   // This hook is ALWAYS called, but only active when screen === 'router'
+  // On the commit and diff screens, they own their own input — disable global nav.
+  const isCommitOrDiffScreen = current.name === 'commit' || current.name === 'diff';
   useAppInput({
     screen,
-    onUp: () => setSelectedIdx((prev) => Math.max(prev - 1, 0)),
-    onDown: () =>
-      setSelectedIdx((prev) => {
-        // Dynamic max based on current screen
-        if (current.name === 'repo') {
-          return Math.min(prev + 1, MOCK_REPOS.length - 1);
-        }
-        if (current.name === 'commit') {
-          return Math.min(prev + 1, current.repo.commits.length - 1);
-        }
-        return prev;
-      }),
+    onUp: isCommitOrDiffScreen ? undefined : () => setSelectedIdx((prev) => Math.max(prev - 1, 0)),
+    onDown: isCommitOrDiffScreen
+      ? undefined
+      : () =>
+          setSelectedIdx((prev) => {
+            // Dynamic max based on current screen
+            if (current.name === 'repo') {
+              return Math.min(prev + 1, MOCK_REPOS.length - 1);
+            }
+            return prev;
+          }),
     onSelect: () => {
       if (current.name === 'repo') {
         const selectedRepo = MOCK_REPOS[selectedIdx];
@@ -44,10 +49,12 @@ export function App() {
         }
       }
     },
-    onBack: () => {
-      pop();
-      setSelectedIdx(0); // Reset selection when going back
-    },
+    onBack: isCommitOrDiffScreen
+      ? undefined
+      : () => {
+          pop();
+          setSelectedIdx(0); // Reset selection when going back
+        },
   });
 
   if (screen === 'splash') {
@@ -70,7 +77,32 @@ export function App() {
   }
 
   if (current.name === 'commit') {
-    return <CommitScreen repo={current.repo} />;
+    return (
+      <CommitScreen
+        repo={current.repo}
+        initialSelectedIdx={selectedIdx}
+        onBack={() => {
+          pop();
+          setSelectedIdx(0);
+        }}
+        onOpenDiff={(commit, file) => {
+          push({ name: 'diff', repo: current.repo, commit, file });
+        }}
+      />
+    );
+  }
+
+  if (current.name === 'diff') {
+    return (
+      <FileDiffScreen
+        repo={current.repo}
+        commit={current.commit}
+        file={current.file}
+        onBack={() => {
+          pop();
+        }}
+      />
+    );
   }
 
   // Fallback — should never reach here
