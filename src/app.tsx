@@ -55,7 +55,9 @@ export function App() {
       <SplashScreen
         onComplete={() => {
           // Clear terminal and transition to router screen
-          process.stdout.write('\u001B[2J\u001B[0f');
+          if (process.stdout.isTTY) {
+            process.stdout.write('\u001B[2J\u001B[0f');
+          }
           setScreen('router');
         }}
         scanProgress={scanProgress}
