@@ -48,11 +48,11 @@ function Panel({ label, focused, width, height, children }: PanelProps) {
     <Box flexDirection="column" width={width} height={height}>
       <Text color={borderColor}>{top}</Text>
       <Box flexDirection="row" height={innerHeight}>
-        <Text color={borderColor}>{'┃'}</Text>
+        <Text color={borderColor}> </Text>
         <Box flexDirection="column" width={innerWidth} overflow="hidden">
           {children}
         </Box>
-        <Text color={borderColor}>{'┃'}</Text>
+        <Text color={borderColor}> </Text>
       </Box>
       <Text color={borderColor}>{bottom}</Text>
     </Box>
@@ -193,7 +193,16 @@ export function CommitScreen({
     }
 
     if (key.backspace || key.delete) {
-      onBack();
+      if (focus === 'files') {
+        setFocus('graph');
+      } else {
+        onBack();
+      }
+      return;
+    }
+
+    if (key.return && focus === 'graph') {
+      setFocus('files');
       return;
     }
 
@@ -370,8 +379,7 @@ export function CommitScreen({
           </Text>
         ) : (
           <Text color="gray" dimColor>
-            [tab] graph/files [j/k] navigate/scroll [enter] view diff [c] copy SHA [bksp] back [q]
-            quit
+            [j/k] navigate [enter] select/diff [c] copy SHA [bksp] back [q] quit
           </Text>
         )}
       </Box>
