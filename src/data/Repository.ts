@@ -144,7 +144,7 @@ export class Repository {
   /**
    * Fetch all refs (branches, tags, HEAD) and map them to commit hashes.
    * Returns a Map<commitHash, string[]> where each value is an array of ref labels.
-   * Example: "a1b2c3d" → ["HEAD", "main", "origin/main"]
+   * Example: "a1b2c3d4e5f6..." → ["HEAD", "main", "origin/main"]
    *
    * This is a single call (no per-commit overhead) and replaces the expensive
    * per-commit getBranchName() loop.
@@ -154,15 +154,16 @@ export class Repository {
 
     try {
       // Get all refs: local branches, remote tracking branches, and tags
+      // Use %(objectname) for full hash (not :short) to match git log hashes
       const refOutput = await this.git.raw([
         'for-each-ref',
-        '--format=%(objectname:short) %(refname:short)',
+        '--format=%(objectname) %(refname:short)',
         'refs/heads',
         'refs/remotes',
         'refs/tags',
       ]);
 
-      // Parse: each line is "<shortHash> <refName>"
+      // Parse: each line is "<fullHash> <refName>"
       refOutput
         .split('\n')
         .filter(Boolean)
@@ -180,7 +181,7 @@ export class Repository {
 
       // Also add HEAD (points to current branch/commit)
       try {
-        const headOutput = await this.git.raw(['rev-parse', '--short', 'HEAD']);
+        const headOutput = await this.git.raw(['rev-parse', 'HEAD']);
         const headHash = headOutput.trim();
         if (headHash && !refMap.has(headHash)) {
           refMap.set(headHash, ['HEAD']);
