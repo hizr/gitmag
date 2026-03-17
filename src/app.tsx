@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Box, Text } from 'ink';
-import { SplashScreen } from './components/SplashScreen.js';
 import { RepoScreen } from './components/RepoScreen.js';
 import { CommitScreen } from './components/CommitScreen.js';
 import { FileDiffScreen } from './components/FileDiffScreen.js';
-import { useStartup } from './components/Scanner.js';
 import { useAppInput } from './hooks/useAppInput.js';
+import { useRepository } from './hooks/useRepository.js';
 import type { RepoEntry, CommitEntry, ChangedFile } from './data/mockRepos.js';
 
 export type Route =
@@ -20,21 +19,18 @@ export type Route =
     };
 
 export function App() {
-  const [screen, setScreen] = useState<'splash' | 'router'>('splash');
   const [stack, setStack] = useState<Route[]>([{ name: 'repo' }]);
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const { repos, repoError, done: startupDone, phase } = useStartup(process.cwd());
+  const { repos, loading: repoLoading, error: repoError } = useRepository(process.cwd());
 
   const push = (route: Route) => setStack((prev) => [...prev, route]);
   const pop = () => setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   const current = stack[stack.length - 1]!;
 
   // Centralized input handler for navigation, selection, and quit
-  // This hook is ALWAYS called, but only active when screen === 'router'
   // On the commit and diff screens, they own their own input — disable global nav.
   const isCommitOrDiffScreen = current.name === 'commit' || current.name === 'diff';
   useAppInput({
-    screen,
     onUp: isCommitOrDiffScreen ? undefined : () => setSelectedIdx((prev) => Math.max(prev - 1, 0)),
     onDown: isCommitOrDiffScreen
       ? undefined
@@ -63,31 +59,16 @@ export function App() {
         },
   });
 
-  if (screen === 'splash') {
-    return (
-      <SplashScreen
-        onComplete={() => {
-          // Clear terminal and transition to router screen
-          if (process.stdout.isTTY) {
-            process.stdout.write('\u001B[2J\u001B[0f');
-          }
-          setScreen('router');
-        }}
-        phase={phase}
-      />
-    );
-  }
-
   if (current.name === 'repo') {
     // Show loading state
-    if (!startupDone) {
+    if (repoLoading) {
       return (
         <Box flexDirection="column" padding={1}>
           <Text color="cyan" bold>
             gitmag
           </Text>
           <Text color="gray" dimColor>
-            {phase}
+            Loading repository...
           </Text>
         </Box>
       );

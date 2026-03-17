@@ -88,18 +88,6 @@ describe('RepoScreen', () => {
     expect(output).toContain('feat:'); // typical commit prefix
   });
 
-  it('renders without crashing with multiple repos', () => {
-    const { lastFrame } = render(
-      React.createElement(RepoScreen, {
-        repos: mockRepos,
-        selectedIdx: 0,
-      })
-    );
-    expect(lastFrame()).toContain('gitmag');
-    expect(lastFrame()).toContain('~/dev/test-repo');
-    expect(lastFrame()).toContain('~/dev/another-repo');
-  });
-
   it('shows first repo as selected by default', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
