@@ -35,6 +35,7 @@ describe('useRepository', () => {
     expect(result.current.error).toBeNull();
     expect(result.current.repos).toEqual([]);
     expect(result.current.phase).toBe('Opening repository…');
+    expect(result.current.repository).toBeNull();
   });
 
   it('loads repository and commits on success', async () => {
@@ -71,6 +72,7 @@ describe('useRepository', () => {
     expect(result.current.repos).toHaveLength(1);
     expect(result.current.repos[0].path).toBe(mockRepoPath);
     expect(result.current.repos[0].commits).toHaveLength(1);
+    expect(result.current.repository).toBe(mockRepo);
   });
 
   it('sets error state on repository open failure', async () => {
@@ -87,6 +89,7 @@ describe('useRepository', () => {
 
     expect(result.current.error).toBe(errorMessage);
     expect(result.current.repos).toEqual([]);
+    expect(result.current.repository).toBeNull();
   });
 
   it('cleans up on unmount (isMounted flag)', async () => {
@@ -136,6 +139,7 @@ describe('useRepository', () => {
 
     // Initial phase
     expect(result.current.phase).toBe('Opening repository…');
+    expect(result.current.repository).toBeNull();
 
     // Wait for the final phase
     await waitFor(() => {
@@ -146,5 +150,6 @@ describe('useRepository', () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
     expect(result.current.repos).toHaveLength(1);
+    expect(result.current.repository).toBe(mockRepo);
   });
 });

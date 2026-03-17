@@ -24,7 +24,13 @@ export function App() {
   const [screen, setScreen] = useState<'splash' | 'router'>('splash');
   const [stack, setStack] = useState<Route[]>([{ name: 'repo' }]);
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const { repos, loading: repoLoading, error: repoError, phase } = useRepository(process.cwd());
+  const {
+    repos,
+    loading: repoLoading,
+    error: repoError,
+    phase,
+    repository,
+  } = useRepository(process.cwd());
 
   // Derive ScanProgress from useRepository
   const scanProgress: ScanProgress = {
@@ -155,14 +161,8 @@ export function App() {
           setSelectedIdx(0);
         }}
         onOpenDiff={(commit, file) => {
-          const repository = repos.find((r) => r.path === current.repo.path);
           if (repository) {
-            const getDiff = async () => {
-              // Lazy-load the diff when FileDiffScreen mounts
-              // In a real implementation, this would call Repository.getDiff
-              // For now, return the pre-populated diff if available
-              return file.diff || '';
-            };
+            const getDiff = () => repository.getDiff(commit.hash, file.path);
             push({ name: 'diff', repo: current.repo, commit, file, getDiff });
           }
         }}

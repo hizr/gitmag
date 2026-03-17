@@ -7,6 +7,7 @@ export interface RepositoryState {
   loading: boolean;
   error: string | null;
   phase: string;
+  repository: Repository | null;
 }
 
 /**
@@ -20,6 +21,7 @@ export function useRepository(path: string): RepositoryState {
     loading: true,
     error: null,
     phase: 'Opening repository…',
+    repository: null,
   });
 
   useEffect(() => {
@@ -63,6 +65,7 @@ export function useRepository(path: string): RepositoryState {
             loading: false,
             error: null,
             phase: 'Ready',
+            repository: repo,
           });
         }
       } catch (err) {
@@ -84,6 +87,7 @@ export function useRepository(path: string): RepositoryState {
             repos: [],
             loading: false,
             error: errorMessage,
+            repository: null,
           }));
         }
       }
