@@ -47,6 +47,7 @@ const MOCK_FILE_WITHOUT_DIFF: ChangedFile = {
 
 describe('FileDiffScreen', () => {
   const mockOnBack = vi.fn();
+  const mockGetDiff = vi.fn().mockResolvedValue('');
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,6 +61,7 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: MOCK_FILE_WITH_DIFF,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );
@@ -75,6 +77,7 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: MOCK_FILE_WITH_DIFF,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );
@@ -87,6 +90,7 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: MOCK_FILE_WITH_DIFF,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );
@@ -101,6 +105,7 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: MOCK_FILE_WITH_DIFF,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );
@@ -115,6 +120,7 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: MOCK_FILE_WITH_DIFF,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );
@@ -129,11 +135,12 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: MOCK_FILE_WITHOUT_DIFF,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );
     const output = lastFrame();
-    expect(output).toMatch(/no diff|unavailable|available/i);
+    expect(output).toMatch(/no diff|unavailable|available|loading/i);
   });
 
   it('displays unified diff headers (@@)', () => {
@@ -142,6 +149,7 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: MOCK_FILE_WITH_DIFF,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );
@@ -156,6 +164,7 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: MOCK_FILE_WITH_DIFF,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );
@@ -173,6 +182,7 @@ describe('FileDiffScreen', () => {
           repo: MOCK_REPO,
           commit: MOCK_COMMIT,
           file: MOCK_FILE_WITH_DIFF,
+          getDiff: mockGetDiff,
           onBack: mockOnBack,
         })
       )
@@ -186,6 +196,7 @@ describe('FileDiffScreen', () => {
         repo: MOCK_REPO,
         commit: MOCK_COMMIT,
         file: addedFile,
+        getDiff: mockGetDiff,
         onBack: mockOnBack,
       })
     );

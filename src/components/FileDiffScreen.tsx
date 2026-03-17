@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile } from '../data/mockRepos.js';
 
@@ -6,6 +6,7 @@ interface FileDiffScreenProps {
   repo: RepoEntry;
   commit: CommitEntry;
   file: ChangedFile;
+  getDiff: () => Promise<string>;
   onBack: () => void;
 }
 
@@ -81,21 +82,49 @@ function DiffLine({ line }: DiffLineProps) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function FileDiffScreen({ repo, commit, file, onBack }: FileDiffScreenProps) {
+export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiffScreenProps) {
   const { stdout } = useStdout();
   const termCols = Math.max(stdout.columns ?? 80, 80);
   const termRows = Math.max(stdout.rows ?? 24, 24);
 
   // ── State ────────────────────────────────────────────────────────────
   const [diffScroll, setDiffScroll] = useState(0);
+  const [diffContent, setDiffContent] = useState<string | null>(file.diff || null);
+  const [loading, setLoading] = useState(!file.diff);
+  const [error, setError] = useState<string | null>(null);
 
   // ── Layout dimensions ────────────────────────────────────────────────
   const availableRows = termRows - 4; // header (2) + footer (2)
   const panelHeight = Math.max(availableRows, 5);
   const innerH = panelHeight - 2;
 
+  // ── Load diff on mount if not already loaded ──────────────────────────
+  useEffect(() => {
+    if (file.diff) {
+      // Diff already available from props
+      setDiffContent(file.diff);
+      setLoading(false);
+      return;
+    }
+
+    // Lazy-load the diff
+    const loadDiff = async () => {
+      try {
+        const diff = await getDiff();
+        setDiffContent(diff);
+        setLoading(false);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to load diff';
+        setError(errorMsg);
+        setLoading(false);
+      }
+    };
+
+    loadDiff();
+  }, [file.diff, getDiff]);
+
   // ── Build diff lines ─────────────────────────────────────────────────
-  const diffLines = file.diff ? file.diff.split('\n') : [];
+  const diffLines = diffContent ? diffContent.split('\n') : [];
   const visibleLines = diffLines.slice(diffScroll, diffScroll + innerH);
 
   // ── Keyboard input ───────────────────────────────────────────────────
@@ -150,7 +179,25 @@ export function FileDiffScreen({ repo, commit, file, onBack }: FileDiffScreenPro
 
       {/* ── Diff panel ────────────────────────────────────────────────── */}
       <Panel label="File Diff" width={termCols - 2} height={panelHeight}>
-        {file.diff ? (
+        {loading ? (
+          <>
+            <Box marginY={Math.floor((innerH - 1) / 2)}>
+              <Text color="cyan">Loading diff…</Text>
+            </Box>
+            {Array.from({ length: Math.max(innerH - 1, 0) }).map((_, i) => (
+              <Text key={`loading-${i}`}> </Text>
+            ))}
+          </>
+        ) : error ? (
+          <>
+            <Box marginY={Math.floor((innerH - 1) / 2)}>
+              <Text color="red">{error}</Text>
+            </Box>
+            {Array.from({ length: Math.max(innerH - 1, 0) }).map((_, i) => (
+              <Text key={`error-${i}`}> </Text>
+            ))}
+          </>
+        ) : diffContent ? (
           <>
             {visibleLines.map((line, i) => (
               <DiffLine key={`diff-${i}`} line={line} />
