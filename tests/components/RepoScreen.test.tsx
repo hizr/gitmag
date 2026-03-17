@@ -2,9 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from 'ink-testing-library';
 import React from 'react';
 import { RepoScreen } from '../../src/components/RepoScreen.js';
+import type { ScanProgress } from '../../src/components/Scanner.js';
 import type { RepoEntry } from '../../src/data/mockRepos.js';
 
 describe('RepoScreen', () => {
+  const mockScanProgress: ScanProgress = {
+    phase: 'Finalizing...',
+    done: true,
+  };
+
   const mockRepos: RepoEntry[] = [
     {
       path: '~/dev/test-repo',
@@ -56,6 +62,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         repos: mockRepos,
+        scanProgress: mockScanProgress,
         selectedIdx: 0,
       })
     );
@@ -67,6 +74,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         repos: mockRepos,
+        scanProgress: mockScanProgress,
         selectedIdx: 0,
       })
     );
@@ -79,6 +87,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         repos: mockRepos,
+        scanProgress: mockScanProgress,
         selectedIdx: 0,
       })
     );
@@ -88,10 +97,39 @@ describe('RepoScreen', () => {
     expect(output).toContain('feat:'); // typical commit prefix
   });
 
+  it('displays scan phase in header', () => {
+    const { lastFrame } = render(
+      React.createElement(RepoScreen, {
+        repos: mockRepos,
+        scanProgress: mockScanProgress,
+        selectedIdx: 0,
+      })
+    );
+    const output = lastFrame();
+    expect(output).toContain('Finalizing...');
+  });
+
+  it('renders without crashing with different scan progress states', () => {
+    const inProgress: ScanProgress = {
+      phase: 'Analyzing activity...',
+      done: false,
+    };
+    const { lastFrame } = render(
+      React.createElement(RepoScreen, {
+        repos: mockRepos,
+        scanProgress: inProgress,
+        selectedIdx: 0,
+      })
+    );
+    expect(lastFrame()).toContain('gitmag');
+    expect(lastFrame()).toContain('Analyzing activity...');
+  });
+
   it('shows first repo as selected by default', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         repos: mockRepos,
+        scanProgress: mockScanProgress,
         selectedIdx: 0,
       })
     );
@@ -104,6 +142,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         repos: mockRepos,
+        scanProgress: mockScanProgress,
         selectedIdx: 0,
       })
     );
@@ -115,6 +154,7 @@ describe('RepoScreen', () => {
     const { lastFrame } = render(
       React.createElement(RepoScreen, {
         repos: mockRepos,
+        scanProgress: mockScanProgress,
         selectedIdx: 1,
       })
     );

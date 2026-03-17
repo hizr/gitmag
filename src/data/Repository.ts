@@ -176,35 +176,4 @@ export class Repository {
       return undefined;
     }
   }
-
-  /**
-   * Fetch all remotes and update local branches.
-   * Returns a result object with ok flag and human-readable message.
-   * Does not throw; always returns a result so callers can display feedback.
-   * @returns Promise with ok flag and message for UI display
-   */
-  async fetchAll(): Promise<{ ok: boolean; message: string }> {
-    try {
-      await this.git.fetch(['--all', '--prune']);
-      return { ok: true, message: 'Remote data fetched successfully' };
-    } catch (err) {
-      // Capture error message for display
-      const message = err instanceof Error ? err.message : String(err);
-
-      // Categorize the error to provide helpful feedback
-      if (message.toLowerCase().includes('no remote')) {
-        return { ok: false, message: 'No remote configured — using local data only' };
-      } else if (message.toLowerCase().includes('could not resolve')) {
-        return { ok: false, message: 'Network error — using local data only' };
-      } else if (message.toLowerCase().includes('authentication') || message.includes('401')) {
-        return { ok: false, message: 'Authentication failed — using local data only' };
-      }
-
-      // Generic error fallback
-      return {
-        ok: false,
-        message: `Fetch error — using local data only (${message.substring(0, 40)})`,
-      };
-    }
-  }
 }

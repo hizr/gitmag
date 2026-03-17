@@ -34,6 +34,7 @@ describe('useRepository', () => {
     expect(result.current.loading).toBe(true);
     expect(result.current.error).toBeNull();
     expect(result.current.repos).toEqual([]);
+    expect(result.current.phase).toBe('Opening repository…');
   });
 
   it('loads repository and commits on success', async () => {
@@ -105,5 +106,45 @@ describe('useRepository', () => {
 
     // Hook should not crash or update state after unmount
     expect(true).toBe(true); // Smoke test
+  });
+
+  it('progresses through phases during loading', async () => {
+    const mockCommits = [
+      {
+        hash: 'abc123',
+        message: 'test commit',
+        date: '2026-03-17',
+        author: 'Test Author',
+        body: 'test body',
+        parentHash: [],
+        branchName: undefined,
+        changedFiles: [],
+      },
+    ];
+
+    const mockRepo = {
+      getPath: () => mockRepoPath,
+      listCommits: vi.fn().mockResolvedValue(mockCommits),
+      getChangedFiles: vi.fn().mockResolvedValue([]),
+      getBranchName: vi.fn().mockResolvedValue('main'),
+    };
+    (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
+      mockRepo
+    );
+
+    const { result } = renderHook(() => useRepository(mockRepoPath));
+
+    // Initial phase
+    expect(result.current.phase).toBe('Opening repository…');
+
+    // Wait for the final phase
+    await waitFor(() => {
+      expect(result.current.phase).toBe('Ready');
+    });
+
+    // Verify final state
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.repos).toHaveLength(1);
   });
 });

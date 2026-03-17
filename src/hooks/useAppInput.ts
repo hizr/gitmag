@@ -2,6 +2,11 @@ import { useInput, useApp } from 'ink';
 
 interface AppInputProps {
   /**
+   * Current screen: 'splash' (no input) or 'router' (handle navigation + quit)
+   */
+  screen: 'splash' | 'router';
+
+  /**
    * Called on arrow-up or 'k' key
    */
   onUp?: () => void;
@@ -35,11 +40,23 @@ interface AppInputProps {
  * - Selection (Enter) on router screens
  * - Back (Backspace/Delete) on router screens
  */
-export function useAppInput({ onUp, onDown, onSelect, onBack, onTab }: AppInputProps): void {
+export function useAppInput({
+  screen,
+  onUp,
+  onDown,
+  onSelect,
+  onBack,
+  onTab,
+}: AppInputProps): void {
   const { exit } = useApp();
 
   useInput(
     (input, key) => {
+      // Only handle input on router screens
+      if (screen !== 'router') {
+        return;
+      }
+
       // Global quit key
       if (input === 'q') {
         exit();
@@ -59,6 +76,6 @@ export function useAppInput({ onUp, onDown, onSelect, onBack, onTab }: AppInputP
         onTab?.();
       }
     },
-    { isActive: true }
+    { isActive: screen === 'router' }
   );
 }

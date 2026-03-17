@@ -6,6 +6,7 @@ export interface RepositoryState {
   repos: RepoEntry[];
   loading: boolean;
   error: string | null;
+  phase: string;
 }
 
 /**
@@ -18,6 +19,7 @@ export function useRepository(path: string): RepositoryState {
     repos: [],
     loading: true,
     error: null,
+    phase: 'Opening repository…',
   });
 
   useEffect(() => {
@@ -25,12 +27,28 @@ export function useRepository(path: string): RepositoryState {
 
     const loadRepository = async () => {
       try {
+        // Phase 1: Open repository
         const repo = await Repository.open(path);
-        const commits = await repo.listCommits(100);
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading commits…' }));
+        }
 
-        // Populate changedFiles and branchName for each commit
+        // Phase 2: List commits
+        const commits = await repo.listCommits(100);
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Indexing files…' }));
+        }
+
+        // Phase 3: Get changed files for each commit
         for (const commit of commits) {
           commit.changedFiles = await repo.getChangedFiles(commit.hash);
+        }
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Resolving branches…' }));
+        }
+
+        // Phase 4: Get branch names for each commit
+        for (const commit of commits) {
           commit.branchName = await repo.getBranchName(commit.hash);
         }
 
@@ -44,6 +62,7 @@ export function useRepository(path: string): RepositoryState {
             ],
             loading: false,
             error: null,
+            phase: 'Ready',
           });
         }
       } catch (err) {
@@ -60,11 +79,12 @@ export function useRepository(path: string): RepositoryState {
         }
 
         if (isMounted) {
-          setState({
+          setState((prev) => ({
+            ...prev,
             repos: [],
             loading: false,
             error: errorMessage,
-          });
+          }));
         }
       }
     };
