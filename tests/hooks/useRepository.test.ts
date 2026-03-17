@@ -25,6 +25,14 @@ describe('useRepository', () => {
       getChangedFiles: vi.fn().mockResolvedValue([]),
       getRefs: vi.fn().mockResolvedValue(new Map()),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
+      getBranchInfo: vi.fn().mockResolvedValue({
+        currentBranch: 'main',
+        remoteBranch: 'origin/main',
+        ahead: 0,
+        behind: 0,
+        headAuthor: 'Test Author',
+        repoPath: mockRepoPath,
+      }),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -59,6 +67,14 @@ describe('useRepository', () => {
       getChangedFiles: vi.fn().mockResolvedValue([]),
       getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
+      getBranchInfo: vi.fn().mockResolvedValue({
+        currentBranch: 'main',
+        remoteBranch: 'origin/main',
+        ahead: 0,
+        behind: 0,
+        headAuthor: 'Test Author',
+        repoPath: mockRepoPath,
+      }),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -102,6 +118,14 @@ describe('useRepository', () => {
       getChangedFiles: vi.fn().mockResolvedValue([]),
       getRefs: vi.fn().mockResolvedValue(new Map()),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
+      getBranchInfo: vi.fn().mockResolvedValue({
+        currentBranch: 'main',
+        remoteBranch: 'origin/main',
+        ahead: 0,
+        behind: 0,
+        headAuthor: 'Test Author',
+        repoPath: mockRepoPath,
+      }),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -135,6 +159,14 @@ describe('useRepository', () => {
       getChangedFiles: vi.fn().mockResolvedValue([]),
       getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
+      getBranchInfo: vi.fn().mockResolvedValue({
+        currentBranch: 'main',
+        remoteBranch: 'origin/main',
+        ahead: 0,
+        behind: 0,
+        headAuthor: 'Test Author',
+        repoPath: mockRepoPath,
+      }),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
