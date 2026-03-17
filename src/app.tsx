@@ -1,23 +1,31 @@
 import { useState } from 'react';
+import { Box, Text } from 'ink';
 import { SplashScreen } from './components/SplashScreen.js';
 import { RepoScreen } from './components/RepoScreen.js';
 import { CommitScreen } from './components/CommitScreen.js';
 import { FileDiffScreen } from './components/FileDiffScreen.js';
 import { useScanner } from './components/Scanner.js';
 import { useAppInput } from './hooks/useAppInput.js';
-import { MOCK_REPOS } from './data/mockRepos.js';
+import { useRepository } from './hooks/useRepository.js';
 import type { RepoEntry, CommitEntry, ChangedFile } from './data/mockRepos.js';
 
 export type Route =
   | { name: 'repo' }
   | { name: 'commit'; repoPath: string; repo: RepoEntry }
-  | { name: 'diff'; repo: RepoEntry; commit: CommitEntry; file: ChangedFile };
+  | {
+      name: 'diff';
+      repo: RepoEntry;
+      commit: CommitEntry;
+      file: ChangedFile;
+      getDiff: () => Promise<string>;
+    };
 
 export function App() {
   const [screen, setScreen] = useState<'splash' | 'router'>('splash');
   const [stack, setStack] = useState<Route[]>([{ name: 'repo' }]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const scanProgress = useScanner();
+  const { repos, loading: repoLoading, error: repoError } = useRepository(process.cwd());
 
   const push = (route: Route) => setStack((prev) => [...prev, route]);
   const pop = () => setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
@@ -36,13 +44,13 @@ export function App() {
           setSelectedIdx((prev) => {
             // Dynamic max based on current screen
             if (current.name === 'repo') {
-              return Math.min(prev + 1, MOCK_REPOS.length - 1);
+              return Math.min(prev + 1, repos.length - 1);
             }
             return prev;
           }),
     onSelect: () => {
       if (current.name === 'repo') {
-        const selectedRepo = MOCK_REPOS[selectedIdx];
+        const selectedRepo = repos[selectedIdx];
         if (selectedRepo) {
           push({ name: 'commit', repoPath: selectedRepo.path, repo: selectedRepo });
           setSelectedIdx(0); // Reset selection for next screen
@@ -73,7 +81,47 @@ export function App() {
   }
 
   if (current.name === 'repo') {
-    return <RepoScreen selectedIdx={selectedIdx} scanProgress={scanProgress} />;
+    // Show loading state
+    if (repoLoading) {
+      return (
+        <Box flexDirection="column" padding={1}>
+          <Text color="cyan" bold>
+            gitmag
+          </Text>
+          <Text color="gray" dimColor>
+            Loading repository...
+          </Text>
+        </Box>
+      );
+    }
+
+    // Show error state
+    if (repoError) {
+      return (
+        <Box flexDirection="column" padding={1}>
+          <Text color="cyan" bold>
+            gitmag
+          </Text>
+          <Text color="red">{repoError}</Text>
+        </Box>
+      );
+    }
+
+    // Show empty state
+    if (repos.length === 0) {
+      return (
+        <Box flexDirection="column" padding={1}>
+          <Text color="cyan" bold>
+            gitmag
+          </Text>
+          <Text color="gray" dimColor>
+            No repositories found
+          </Text>
+        </Box>
+      );
+    }
+
+    return <RepoScreen repos={repos} selectedIdx={selectedIdx} scanProgress={scanProgress} />;
   }
 
   if (current.name === 'commit') {
@@ -86,7 +134,16 @@ export function App() {
           setSelectedIdx(0);
         }}
         onOpenDiff={(commit, file) => {
-          push({ name: 'diff', repo: current.repo, commit, file });
+          const repository = repos.find((r) => r.path === current.repo.path);
+          if (repository) {
+            const getDiff = async () => {
+              // Lazy-load the diff when FileDiffScreen mounts
+              // In a real implementation, this would call Repository.getDiff
+              // For now, return the pre-populated diff if available
+              return file.diff || '';
+            };
+            push({ name: 'diff', repo: current.repo, commit, file, getDiff });
+          }
         }}
       />
     );
@@ -98,6 +155,7 @@ export function App() {
         repo={current.repo}
         commit={current.commit}
         file={current.file}
+        getDiff={current.getDiff}
         onBack={() => {
           pop();
         }}

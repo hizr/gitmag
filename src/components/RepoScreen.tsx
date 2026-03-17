@@ -1,11 +1,12 @@
 import { type ReactNode } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import type { ScanProgress } from './Scanner.js';
-import { MOCK_REPOS } from '../data/mockRepos.js';
+import type { RepoEntry } from '../data/mockRepos.js';
 
 interface RepoScreenProps {
-  scanProgress: ScanProgress;
+  repos: RepoEntry[];
   selectedIdx: number;
+  scanProgress: ScanProgress;
 }
 
 // ── Panel border helper ───────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ function Panel({ label, width, height, children }: PanelProps) {
   );
 }
 
-export function RepoScreen({ scanProgress, selectedIdx }: RepoScreenProps) {
+export function RepoScreen({ repos, selectedIdx, scanProgress }: RepoScreenProps) {
   const { stdout } = useStdout();
   const termCols = Math.max(stdout.columns ?? 80, 80);
   const termRows = Math.max(stdout.rows ?? 24, 24);
@@ -67,7 +68,7 @@ export function RepoScreen({ scanProgress, selectedIdx }: RepoScreenProps) {
       {/* Repo list panel */}
       <Panel label="Repositories" width={termCols - 2} height={panelHeight}>
         <Box flexDirection="column">
-          {MOCK_REPOS.map((repo, repoIdx) => {
+          {repos.map((repo, repoIdx) => {
             const isSelected = repoIdx === selectedIdx;
             return (
               <Box key={repo.path} flexDirection="column" marginBottom={1}>
