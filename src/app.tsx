@@ -4,6 +4,7 @@ import { SplashScreen } from './components/SplashScreen.js';
 import { CommitScreen } from './components/CommitScreen.js';
 import { FileDiffScreen } from './components/FileDiffScreen.js';
 import { useRepository } from './hooks/useRepository.js';
+import { useQuit } from './hooks/useQuit.js';
 import type { ScanProgress } from './components/Scanner.js';
 import type { RepoEntry, CommitEntry, ChangedFile } from './data/mockRepos.js';
 
@@ -42,6 +43,9 @@ export function App() {
   const push = (route: Route) => setStack((prev) => [...prev, route]);
   const pop = () => setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   const current = stack[stack.length - 1];
+
+  // Handle quit key ('q') when on router (not on splash screen)
+  useQuit(screen === 'router');
 
   // No longer need to manage repo list navigation — all screens handle their own input
   // useAppInput only needed for quit key, but that's handled by root shell wrapper

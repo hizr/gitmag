@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
-import { Box, Text, useStdout, useInput } from 'ink';
+import { Box, Text, useStdout, useInput, useApp } from 'ink';
 import clipboard from 'clipboardy';
 import type {
   RepoEntry,
@@ -235,6 +235,7 @@ export function CommitScreen({
   workingChanges,
 }: CommitScreenProps) {
   const { stdout } = useStdout();
+  const { exit } = useApp();
   const termCols = Math.max(stdout.columns ?? 80, 80);
   const termRows = Math.max(stdout.rows ?? 24, 24);
 
@@ -371,7 +372,7 @@ export function CommitScreen({
   // ── Keyboard input ────────────────────────────────────────────────────
   useInput((input, key) => {
     if (input === 'q') {
-      // handled by app, but guard here too
+      exit();
       return;
     }
 
