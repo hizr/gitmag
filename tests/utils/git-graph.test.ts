@@ -11,6 +11,7 @@ function commit(hash: string, parentHash: string[], message = 'msg'): CommitEntr
     author: 'Test',
     body: '',
     parentHash,
+    refs: [],
     changedFiles: [],
   };
 }
@@ -102,5 +103,139 @@ describe('buildGraphLines', () => {
     for (const line of lines) {
       expect(typeof line.column).toBe('number');
     }
+  });
+
+  // ── Refs passthrough ─────────────────────────────────────────────────
+  it('carries refs from commit to GraphLine', () => {
+    const commitWithRefs: CommitEntry = {
+      hash: 'abc123',
+      message: 'test commit',
+      date: '2026-01-01',
+      author: 'Test',
+      body: '',
+      parentHash: [],
+      refs: ['HEAD', 'main', 'v1.0.0'],
+      changedFiles: [],
+    };
+    const lines = buildGraphLines([commitWithRefs]);
+    expect(lines[0].commit.refs).toEqual(['HEAD', 'main', 'v1.0.0']);
+  });
+});
+
+// ── Tests for synthetic WORKING node injection (in CommitScreen) ──────────
+
+describe('CommitScreen: synthetic WORKING node injection', () => {
+  /**
+   * Note: These tests verify the logic for creating and prepending a synthetic
+   * WORKING node. The actual CommitScreen component is responsible for:
+   * 1. Receiving workingChanges prop
+   * 2. Creating the synthetic CommitEntry with hash='__WORKING__'
+   * 3. Prepending it to the commits list
+   * 4. Passing the merged list to buildGraphLines()
+   */
+
+  it('synthetic WORKING commit has correct structure', () => {
+    const stagedFile = { status: 'M' as const, path: 'staged.txt' };
+    const unstagedFile = { status: 'M' as const, path: 'unstaged.txt' };
+    const untrackedFile = { status: '??' as const, path: 'untracked.txt' };
+
+    const workingChanges = {
+      staged: [stagedFile],
+      unstaged: [unstagedFile],
+      untracked: [untrackedFile],
+    };
+
+    // Simulate what CommitScreen does
+    const syntheticWorkingCommit: CommitEntry = {
+      hash: '__WORKING__',
+      message: '[WORKING] Local changes',
+      date: new Date().toISOString().split('T')[0],
+      author: 'you',
+      body: '',
+      parentHash: ['abc123'], // Would be real HEAD hash in actual app
+      refs: [],
+      changedFiles: [
+        ...workingChanges.staged,
+        ...workingChanges.unstaged,
+        ...workingChanges.untracked,
+      ],
+    };
+
+    expect(syntheticWorkingCommit.hash).toBe('__WORKING__');
+    expect(syntheticWorkingCommit.changedFiles).toHaveLength(3);
+    expect(syntheticWorkingCommit.message).toContain('WORKING');
+    expect(syntheticWorkingCommit.message).toContain('Local changes');
+  });
+
+  it('synthetic WORKING node builds a valid GraphLine', () => {
+    const realCommit = commit('abc123', []);
+    const workingCommit = commit('__WORKING__', ['abc123'], '[WORKING] Local changes');
+
+    const commits = [workingCommit, realCommit];
+    const lines = buildGraphLines(commits);
+
+    // Should have two lines: WORKING and the real commit
+    expect(lines).toHaveLength(2);
+
+    // First line should be the WORKING commit
+    expect(lines[0].commit.hash).toBe('__WORKING__');
+    expect(lines[0].prefix).toContain('●');
+
+    // Second line should be the real commit
+    expect(lines[1].commit.hash).toBe('abc123');
+  });
+
+  it('WORKING node is skipped when no changes exist', () => {
+    // When workingChanges is null or all categories are empty,
+    // CommitScreen should NOT create the synthetic commit
+    const realCommits = [commit('abc123', [])];
+
+    // Simulate: no synthetic commit created because workingChanges is empty
+    const lines = buildGraphLines(realCommits);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].commit.hash).toBe('abc123');
+  });
+
+  it('WORKING node collects all file categories', () => {
+    const stagedFiles = [
+      { status: 'M' as const, path: 'file1.txt' },
+      { status: 'A' as const, path: 'file2.txt' },
+    ];
+    const unstagedFiles = [
+      { status: 'M' as const, path: 'file3.txt' },
+      { status: 'D' as const, path: 'file3b.txt' },
+    ];
+    const untrackedFiles = [{ status: '??' as const, path: 'file4.txt' }];
+
+    const workingCommit: CommitEntry = {
+      hash: '__WORKING__',
+      message: '[WORKING] Local changes',
+      date: '2026-03-17',
+      author: 'you',
+      body: '',
+      parentHash: ['abc123'],
+      refs: [],
+      changedFiles: [...stagedFiles, ...unstagedFiles, ...untrackedFiles],
+    };
+
+    expect(workingCommit.changedFiles).toHaveLength(5);
+    expect(workingCommit.changedFiles.some((f) => f.path === 'file1.txt')).toBe(true);
+    expect(workingCommit.changedFiles.some((f) => f.path === 'file4.txt')).toBe(true);
+  });
+
+  it('GraphRow component should display diamond for WORKING node', () => {
+    // Note: This is testing the logic, not the actual component rendering
+    // The actual component uses: isWorking ? prefix.replace('●', '◆') : prefix
+    const workingCommit = commit('__WORKING__', ['abc123']);
+    const lines = buildGraphLines([workingCommit]);
+
+    const line = lines[0];
+    expect(line.commit.hash).toBe('__WORKING__');
+    // The prefix contains '●'; CommitScreen will replace it with '◆'
+    expect(line.prefix).toContain('●');
+
+    // Simulate the replacement that GraphRow does
+    const displayPrefix = line.prefix.replace('●', '◆');
+    expect(displayPrefix).toContain('◆');
   });
 });

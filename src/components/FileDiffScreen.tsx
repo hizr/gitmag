@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { Box, Text, useStdout, useInput } from 'ink';
+import { Box, Text, useStdout, useInput, useApp } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile } from '../data/mockRepos.js';
 
 interface FileDiffScreenProps {
@@ -91,6 +91,7 @@ function DiffLine({ line, lineNumber, showLineNumbers }: DiffLineProps) {
 
 export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiffScreenProps) {
   const { stdout } = useStdout();
+  const { exit } = useApp();
   const termCols = Math.max(stdout.columns ?? 80, 80);
   const termRows = Math.max(stdout.rows ?? 24, 24);
 
@@ -138,7 +139,7 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
   // ── Keyboard input ───────────────────────────────────────────────────
   useInput((input, key) => {
     if (input === 'q') {
-      // handled by app, but guard here too
+      exit();
       return;
     }
 

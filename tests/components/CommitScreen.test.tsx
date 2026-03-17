@@ -23,7 +23,7 @@ const MOCK_REPO: RepoEntry = {
       author: 'Alice Müller',
       body: 'Use useStdout to obtain real terminal dimensions.',
       parentHash: ['37108a1'],
-      branchName: 'main',
+      refs: ['HEAD', 'main'],
       changedFiles: [
         { status: 'M', path: 'src/components/SplashScreen.tsx' },
         { status: 'A', path: 'src/hooks/useTerminalSize.ts' },
@@ -36,6 +36,7 @@ const MOCK_REPO: RepoEntry = {
       author: 'Bob Schneider',
       body: 'Remove redundant paddingX.',
       parentHash: [],
+      refs: ['v1.0.0'],
       changedFiles: [{ status: 'M', path: 'src/components/SplashScreen.tsx' }],
     },
   ],
@@ -113,6 +114,25 @@ describe('CommitScreen', () => {
     expect(lastFrame()).toContain('Alice Müller');
   });
 
+  it('displays ref badges for commits in the graph', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    const output = lastFrame();
+    // First commit has refs ['HEAD', 'main']
+    expect(output).toContain('[HEAD]');
+    expect(output).toContain('[main]');
+  });
+
+  it('displays version tags in ref badges', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    const output = lastFrame();
+    // Second commit has refs ['v1.0.0']
+    expect(output).toContain('[v1.0.0]');
+  });
+
   // ── Info panel content (first commit selected by default) ────────────────
 
   it('shows the selected commit hash in the info panel', () => {
@@ -127,6 +147,16 @@ describe('CommitScreen', () => {
       React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
     );
     expect(lastFrame()).toContain('Alice Müller');
+  });
+
+  it('shows the selected commit refs in the info panel', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
+    );
+    const output = lastFrame();
+    // First commit has refs ['HEAD', 'main']
+    expect(output).toContain('HEAD');
+    expect(output).toContain('main');
   });
 
   // ── Files panel content ───────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { simpleGit } from 'simple-git';
-import type { CommitEntry, ChangedFile } from './mockRepos.js';
+import type { CommitEntry, ChangedFile, WorkingChanges, BranchInfo } from './mockRepos.js';
 import type { SimpleGit } from 'simple-git';
 
 /**
@@ -81,7 +81,7 @@ export class Repository {
         author: e.author_name || 'Unknown',
         body: e.body || '',
         parentHash: e.parents ? e.parents.split(' ').filter(Boolean) : [],
-        branchName: undefined, // simple-git log doesn't expose branch name easily; leave undefined
+        refs: [], // Populated separately via getRefs
         changedFiles: [], // Populated separately via getChangedFiles
       };
     });
@@ -142,38 +142,198 @@ export class Repository {
   }
 
   /**
-   * Get the primary branch name that contains the given commit.
-   * First tries the current HEAD branch, then falls back to first local branch.
-   * @param hash Commit hash
+   * Fetch all refs (branches, tags, HEAD) and map them to commit hashes.
+   * Returns a Map<commitHash, string[]> where each value is an array of ref labels.
+   * Example: "a1b2c3d4e5f6..." → ["HEAD", "main", "origin/main"]
+   *
+   * This is a single call (no per-commit overhead) and replaces the expensive
+   * per-commit getBranchName() loop.
    */
-  async getBranchName(hash: string): Promise<string | undefined> {
-    try {
-      // Try to get the current branch first (where HEAD points)
-      const status = await this.git.status();
-      const currentBranch = status.current;
+  async getRefs(): Promise<Map<string, string[]>> {
+    const refMap = new Map<string, string[]>();
 
-      // Check if this commit is reachable from the current branch
-      if (currentBranch) {
+    try {
+      // Get all refs: local branches, remote tracking branches, and tags
+      // Use %(objectname) for full hash (not :short) to match git log hashes
+      const refOutput = await this.git.raw([
+        'for-each-ref',
+        '--format=%(objectname) %(refname:short)',
+        'refs/heads',
+        'refs/remotes',
+        'refs/tags',
+      ]);
+
+      // Parse: each line is "<fullHash> <refName>"
+      refOutput
+        .split('\n')
+        .filter(Boolean)
+        .forEach((line: string) => {
+          const parts = line.split(' ');
+          if (parts.length >= 2) {
+            const hash = parts[0];
+            const refName = parts.slice(1).join(' '); // Handle ref names with spaces
+            if (!refMap.has(hash)) {
+              refMap.set(hash, []);
+            }
+            refMap.get(hash)!.push(refName);
+          }
+        });
+
+      // Also add HEAD (points to current branch/commit)
+      try {
+        const headOutput = await this.git.raw(['rev-parse', 'HEAD']);
+        const headHash = headOutput.trim();
+        if (headHash && !refMap.has(headHash)) {
+          refMap.set(headHash, ['HEAD']);
+        } else if (headHash) {
+          const refs = refMap.get(headHash)!;
+          if (!refs.includes('HEAD')) {
+            refs.unshift('HEAD'); // Put HEAD first
+          }
+        }
+      } catch {
+        // HEAD may not exist in initial commit scenarios; ignore
+      }
+
+      return refMap;
+    } catch {
+      // git for-each-ref failed; return empty map
+      return new Map();
+    }
+  }
+
+  /**
+   * Fetch the working directory changes (staged, unstaged, untracked files).
+   * Uses git status --porcelain for a single, efficient call.
+   * Porcelain format: "<XY> <path>" where X is staged status, Y is unstaged status.
+   *   Staged (first column): M=Modified, A=Added, D=Deleted, R=Renamed, C=Copied
+   *   Unstaged (second column): M=Modified, D=Deleted
+   *   Untracked: ?? prefix
+   */
+  async getWorkingChanges(): Promise<WorkingChanges> {
+    const result: WorkingChanges = {
+      staged: [],
+      unstaged: [],
+      untracked: [],
+    };
+
+    try {
+      const output = await this.git.raw(['status', '--porcelain']);
+
+      output
+        .split('\n')
+        .filter(Boolean)
+        .forEach((line: string) => {
+          // Porcelain format is always: "<status1><status2> <path>"
+          // where status1 is staged, status2 is unstaged
+          // Note: paths with special chars are quoted, e.g. 'A  "file with spaces.txt"'
+          if (line.length < 3) return; // Malformed line
+
+          const status1 = line[0];
+          const status2 = line[1];
+          let path = line.slice(3); // Skip "XY "
+
+          // Git quotes paths with special characters; we need to remove the quotes
+          if (path.startsWith('"') && path.endsWith('"')) {
+            path = path.slice(1, -1);
+            // Unescape git's escaping (e.g., \\ → \, \" → ")
+            path = path.replace(/\\\\/g, '\\').replace(/\\"/g, '"');
+          }
+
+          // Untracked files have '?' in both columns
+          if (status1 === '?' && status2 === '?') {
+            result.untracked.push({
+              status: '??',
+              path,
+            });
+          } else if (status1 !== ' ') {
+            // Staged changes (status1 is not space)
+            result.staged.push({
+              status: status1 as 'M' | 'A' | 'D' | 'R',
+              path,
+            });
+          } else if (status2 !== ' ') {
+            // Unstaged changes (status2 is not space, status1 is space)
+            result.unstaged.push({
+              status: status2 as 'M' | 'D',
+              path,
+            });
+          }
+        });
+
+      return result;
+    } catch {
+      // git status failed or repo is in an invalid state; return empty
+      return result;
+    }
+  }
+
+  /**
+   * Fetch branch information: current branch, remote tracking branch,
+   * ahead/behind counts, HEAD author, and repo path.
+   * @param headCommitAuthor Author of the HEAD commit (from commits array)
+   */
+  async getBranchInfo(headCommitAuthor: string): Promise<BranchInfo> {
+    const result: BranchInfo = {
+      currentBranch: '(unknown)',
+      remoteBranch: null,
+      ahead: 0,
+      behind: 0,
+      headAuthor: headCommitAuthor,
+      repoPath: this.basePath,
+    };
+
+    try {
+      // Get current branch name using symbolic-ref
+      try {
+        const branchOutput = await this.git.raw(['symbolic-ref', '--short', 'HEAD']);
+        result.currentBranch = branchOutput.trim();
+      } catch {
+        // Detached HEAD or other issue
         try {
-          await this.git.raw(['merge-base', '--is-ancestor', hash, 'HEAD']);
-          return currentBranch;
+          const headHash = await this.git.raw(['rev-parse', '--short', 'HEAD']);
+          result.currentBranch = `(detached HEAD: ${headHash.trim()})`;
         } catch {
-          // Not in current branch, try others
+          result.currentBranch = '(unknown)';
         }
       }
 
-      // Fall back to getting all branches containing this commit
-      const branches = await this.git.raw(['branch', '--contains', hash]);
-      const branchList = branches
-        .split('\n')
-        .map((b) => b.trim())
-        .filter(Boolean)
-        .map((b) => b.replace(/^\*\s+/, '')); // Remove '* ' prefix if present
+      // Get remote tracking branch
+      try {
+        const upstreamOutput = await this.git.raw([
+          'rev-parse',
+          '--abbrev-ref',
+          '--symbolic-full-name',
+          '@{u}',
+        ]);
+        const upstream = upstreamOutput.trim();
+        if (upstream && upstream !== '@{u}') {
+          // Upstream exists and is not the literal "@{u}"
+          result.remoteBranch = upstream;
 
-      return branchList[0]; // Return first branch found
+          // Get ahead/behind counts only if upstream exists
+          try {
+            const countOutput = await this.git.raw([
+              'rev-list',
+              '--left-right',
+              '--count',
+              'HEAD...@{u}',
+            ]);
+            const [ahead, behind] = countOutput.trim().split('\t').map(Number);
+            result.ahead = ahead || 0;
+            result.behind = behind || 0;
+          } catch {
+            // Could not get ahead/behind; leave as 0
+          }
+        }
+      } catch {
+        // No upstream configured; leave remoteBranch as null
+      }
+
+      return result;
     } catch {
-      // Could not determine branch; return undefined
-      return undefined;
+      // Fallback in case of unexpected error
+      return result;
     }
   }
 }

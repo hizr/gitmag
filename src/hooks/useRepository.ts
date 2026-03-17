@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import type { RepoEntry } from '../data/mockRepos.js';
+import type { RepoEntry, WorkingChanges } from '../data/mockRepos.js';
 import { Repository } from '../data/Repository.js';
 
 export interface RepositoryState {
   repos: RepoEntry[];
   loading: boolean;
   error: string | null;
+  phase: string;
+  repository: Repository | null;
+  workingChanges: WorkingChanges | null;
 }
 
 /**
@@ -18,6 +21,9 @@ export function useRepository(path: string): RepositoryState {
     repos: [],
     loading: true,
     error: null,
+    phase: 'Opening repository…',
+    repository: null,
+    workingChanges: null,
   });
 
   useEffect(() => {
@@ -25,14 +31,46 @@ export function useRepository(path: string): RepositoryState {
 
     const loadRepository = async () => {
       try {
+        // Phase 1: Open repository
         const repo = await Repository.open(path);
-        const commits = await repo.listCommits(100);
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading commits…' }));
+        }
 
-        // Populate changedFiles and branchName for each commit
+        // Phase 2: List commits
+        const commits = await repo.listCommits(100);
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Indexing files…' }));
+        }
+
+        // Phase 3: Get changed files for each commit
         for (const commit of commits) {
           commit.changedFiles = await repo.getChangedFiles(commit.hash);
-          commit.branchName = await repo.getBranchName(commit.hash);
         }
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading refs…' }));
+        }
+
+        // Phase 4: Get all refs (branches, tags, HEAD) in a single call
+        const refMap = await repo.getRefs();
+        for (const commit of commits) {
+          commit.refs = refMap.get(commit.hash) || [];
+        }
+
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading working changes…' }));
+        }
+
+        // Phase 5: Get working directory changes
+        const workingChanges = await repo.getWorkingChanges();
+
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading branch info…' }));
+        }
+
+        // Phase 6: Get branch information
+        const headAuthor = commits.length > 0 ? commits[0].author : 'Unknown';
+        const branchInfo = await repo.getBranchInfo(headAuthor);
 
         if (isMounted) {
           setState({
@@ -40,10 +78,14 @@ export function useRepository(path: string): RepositoryState {
               {
                 path: repo.getPath(),
                 commits,
+                branchInfo,
               },
             ],
             loading: false,
             error: null,
+            phase: 'Ready',
+            repository: repo,
+            workingChanges,
           });
         }
       } catch (err) {
@@ -60,11 +102,13 @@ export function useRepository(path: string): RepositoryState {
         }
 
         if (isMounted) {
-          setState({
+          setState((prev) => ({
+            ...prev,
             repos: [],
             loading: false,
             error: errorMessage,
-          });
+            repository: null,
+          }));
         }
       }
     };
