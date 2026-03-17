@@ -30,11 +30,11 @@ function Panel({ label, width, height, children }: PanelProps) {
     <Box flexDirection="column" width={width} height={height}>
       <Text color={borderColor}>{top}</Text>
       <Box flexDirection="row" height={innerHeight}>
-        <Text color={borderColor}>{'┃'}</Text>
+        <Text color={borderColor}> </Text>
         <Box flexDirection="column" width={innerWidth} overflow="hidden">
           {children}
         </Box>
-        <Text color={borderColor}>{'┃'}</Text>
+        <Text color={borderColor}> </Text>
       </Box>
       <Text color={borderColor}>{bottom}</Text>
     </Box>
