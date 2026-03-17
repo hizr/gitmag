@@ -25,9 +25,10 @@ const FILE_STATUS_COLOR: Record<string, string> = {
 
 interface CommitScreenProps {
   repo: RepoEntry;
-  initialSelectedIdx?: number;
+  initialSelectedCommitIdx?: number;
+  initialSelectedFileIdx?: number;
   onBack: () => void;
-  onOpenDiff?: (commit: CommitEntry, file: ChangedFile) => void;
+  onOpenDiff?: (commit: CommitEntry, file: ChangedFile, fileIdx: number) => void;
   workingChanges?: WorkingChanges | null;
 }
 
@@ -153,7 +154,8 @@ function GraphRow({ prefix, commit, selected, maxWidth }: GraphRowProps) {
 
 export function CommitScreen({
   repo,
-  initialSelectedIdx = 0,
+  initialSelectedCommitIdx = 0,
+  initialSelectedFileIdx = 0,
   onBack,
   onOpenDiff,
   workingChanges,
@@ -193,14 +195,14 @@ export function CommitScreen({
 
   const graphLines = buildGraphLines(commitsWithWorking);
 
-  // ── State ────────────────────────────────────────────────────────────
+  // ── State ────────────────────────────────────────────────────────
   const [focus, setFocus] = useState<FocusPanel>('graph');
   const [selectedCommitIdx, setSelectedCommitIdx] = useState(
-    Math.min(initialSelectedIdx, Math.max(graphLines.length - 1, 0))
+    Math.min(initialSelectedCommitIdx, Math.max(graphLines.length - 1, 0))
   );
   const [graphScroll, setGraphScroll] = useState(0);
   const [infoScroll, setInfoScroll] = useState(0);
-  const [selectedFileIdx, setSelectedFileIdx] = useState(0);
+  const [selectedFileIdx, setSelectedFileIdx] = useState(initialSelectedFileIdx);
   const [filesScroll, setFilesScroll] = useState(0);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
@@ -212,6 +214,13 @@ export function CommitScreen({
     setFilesScroll(0);
     setSelectedFileIdx(0);
   }, [selectedCommitIdx]);
+
+  // Restore focus to 'files' when returning from diff view
+  useEffect(() => {
+    if (initialSelectedFileIdx && initialSelectedFileIdx > 0) {
+      setFocus('files');
+    }
+  }, [initialSelectedFileIdx]);
 
   // ── Layout dimensions ────────────────────────────────────────────────
   const availableRows = termRows - 4; // header (2) + footer (2)
@@ -314,10 +323,14 @@ export function CommitScreen({
       const selectedFile = allFileLines[selectedFileIdx];
       if (selectedFile && !selectedFile.isHeader) {
         // Convert FileLine back to ChangedFile format
-        onOpenDiff(selectedCommit, {
-          status: selectedFile.status as any,
-          path: selectedFile.path,
-        });
+        onOpenDiff(
+          selectedCommit,
+          {
+            status: selectedFile.status as any,
+            path: selectedFile.path,
+          },
+          selectedFileIdx
+        );
       }
       return;
     }

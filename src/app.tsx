@@ -18,12 +18,15 @@ export type Route =
       commit: CommitEntry;
       file: ChangedFile;
       getDiff: () => Promise<string>;
+      selectedFileIdx: number;
     };
 
 export function App() {
   const [screen, setScreen] = useState<'splash' | 'router'>('splash');
   const [stack, setStack] = useState<Route[]>([{ name: 'repo' }]);
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [selectedCommitIdx, setSelectedCommitIdx] = useState(0);
+  const [selectedFileIdx, setSelectedFileIdx] = useState(0);
   const {
     repos,
     loading: repoLoading,
@@ -65,7 +68,8 @@ export function App() {
         const selectedRepo = repos[selectedIdx];
         if (selectedRepo) {
           push({ name: 'commit', repoPath: selectedRepo.path, repo: selectedRepo });
-          setSelectedIdx(0); // Reset selection for next screen
+          setSelectedCommitIdx(0); // Reset commit selection for next screen
+          setSelectedFileIdx(0); // Reset file selection for next screen
         }
       }
     },
@@ -156,16 +160,26 @@ export function App() {
     return (
       <CommitScreen
         repo={current.repo}
-        initialSelectedIdx={selectedIdx}
+        initialSelectedCommitIdx={selectedCommitIdx}
+        initialSelectedFileIdx={selectedFileIdx}
         onBack={() => {
           pop();
-          setSelectedIdx(0);
+          setSelectedCommitIdx(0);
+          setSelectedFileIdx(0);
         }}
         workingChanges={workingChanges}
-        onOpenDiff={(commit, file) => {
+        onOpenDiff={(commit, file, fileIdx) => {
           if (repository) {
             const getDiff = () => repository.getDiff(commit.hash, file.path);
-            push({ name: 'diff', repo: current.repo, commit, file, getDiff });
+            push({
+              name: 'diff',
+              repo: current.repo,
+              commit,
+              file,
+              getDiff,
+              selectedFileIdx: fileIdx,
+            });
+            setSelectedFileIdx(fileIdx);
           }
         }}
       />
@@ -181,6 +195,7 @@ export function App() {
         getDiff={current.getDiff}
         onBack={() => {
           pop();
+          setSelectedFileIdx(current.selectedFileIdx);
         }}
       />
     );
