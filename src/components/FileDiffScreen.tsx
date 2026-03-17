@@ -47,13 +47,18 @@ function Panel({ label, width, height, children }: PanelProps) {
 
 interface DiffLineProps {
   line: string;
+  lineNumber: number;
+  showLineNumbers: boolean;
 }
 
-function DiffLine({ line }: DiffLineProps) {
+function DiffLine({ line, lineNumber, showLineNumbers }: DiffLineProps) {
+  const lineNumStr = showLineNumbers ? `${String(lineNumber).padStart(4, ' ')} │ ` : '';
+
   // Color based on line prefix
   if (line.startsWith('+') && !line.startsWith('+++')) {
     return (
       <Text color="green" wrap="truncate-end">
+        {lineNumStr}
         {line}
       </Text>
     );
@@ -61,6 +66,7 @@ function DiffLine({ line }: DiffLineProps) {
   if (line.startsWith('-') && !line.startsWith('---')) {
     return (
       <Text color="red" wrap="truncate-end">
+        {lineNumStr}
         {line}
       </Text>
     );
@@ -75,6 +81,7 @@ function DiffLine({ line }: DiffLineProps) {
   // Context lines (default color, dimmed if desired)
   return (
     <Text color="gray" wrap="truncate-end">
+      {lineNumStr}
       {line}
     </Text>
   );
@@ -92,6 +99,7 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
   const [diffContent, setDiffContent] = useState<string | null>(file.diff || null);
   const [loading, setLoading] = useState(!file.diff);
   const [error, setError] = useState<string | null>(null);
+  const [showLineNumbers, setShowLineNumbers] = useState(true);
 
   // ── Layout dimensions ────────────────────────────────────────────────
   const availableRows = termRows - 4; // header (2) + footer (2)
@@ -136,6 +144,11 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
 
     if (key.backspace || key.delete) {
       onBack();
+      return;
+    }
+
+    if (input === 'l') {
+      setShowLineNumbers((p) => !p);
       return;
     }
 
@@ -200,7 +213,12 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
         ) : diffContent ? (
           <>
             {visibleLines.map((line, i) => (
-              <DiffLine key={`diff-${i}`} line={line} />
+              <DiffLine
+                key={`diff-${i}`}
+                line={line}
+                lineNumber={diffScroll + i + 1}
+                showLineNumbers={showLineNumbers}
+              />
             ))}
             {/* Empty rows to fill panel height */}
             {Array.from({ length: Math.max(innerH - visibleLines.length, 0) }).map((_, i) => (
@@ -223,8 +241,13 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
       <Box marginTop={0}>
+        <Box flexGrow={1}>
+          <Text color="gray" dimColor>
+            [j/k] scroll [l] toggle line# [bksp] back [q] quit
+          </Text>
+        </Box>
         <Text color="gray" dimColor>
-          [j/k] scroll [bksp] back [q] quit
+          {diffScroll + 1}–{Math.min(diffScroll + innerH, diffLines.length)} / {diffLines.length}
         </Text>
       </Box>
     </Box>

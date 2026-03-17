@@ -28,9 +28,10 @@ export function useRepository(path: string): RepositoryState {
         const repo = await Repository.open(path);
         const commits = await repo.listCommits(100);
 
-        // Populate changedFiles for each commit
+        // Populate changedFiles and branchName for each commit
         for (const commit of commits) {
           commit.changedFiles = await repo.getChangedFiles(commit.hash);
+          commit.branchName = await repo.getBranchName(commit.hash);
         }
 
         if (isMounted) {
@@ -46,7 +47,18 @@ export function useRepository(path: string): RepositoryState {
           });
         }
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        let errorMessage = 'Unknown error loading repository';
+
+        if (err instanceof Error) {
+          errorMessage = err.message;
+          // Include underlying cause if available
+          if ('cause' in err && err.cause instanceof Error) {
+            errorMessage += `\n(${(err.cause as Error).message})`;
+          }
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        }
+
         if (isMounted) {
           setState({
             repos: [],

@@ -1,7 +1,6 @@
 node_modules/
 .opencode/
 NEXTSESSION.md
-package-lock.json
 dist/
 tests/**/*.d.ts
 tests/**/*.d.ts.map
