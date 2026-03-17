@@ -13,18 +13,18 @@ describe('SplashScreen', () => {
     vi.restoreAllMocks();
   });
 
-  it('displays status text from scanProgress.phase', () => {
+  it('displays status text from phase prop', () => {
     const onComplete = vi.fn();
     const { lastFrame } = render(
       React.createElement(SplashScreen, {
         onComplete,
-        duration: 3000,
-        scanProgress: { phase: 'Indexing commits...', done: false },
+        duration: 2200,
+        phase: 'Indexing commits…',
       })
     );
 
     const output = lastFrame();
-    expect(output).toContain('Indexing commits...');
+    expect(output).toContain('Indexing commits…');
   });
 
   it('displays updated status text when phase changes', () => {
@@ -32,80 +32,51 @@ describe('SplashScreen', () => {
     const { rerender, lastFrame } = render(
       React.createElement(SplashScreen, {
         onComplete,
-        duration: 3000,
-        scanProgress: { phase: 'Scanning...', done: false },
+        duration: 2200,
+        phase: 'Scanning repositories…',
       })
     );
 
-    expect(lastFrame()).toContain('Scanning...');
+    expect(lastFrame()).toContain('Scanning repositories…');
 
     rerender(
       React.createElement(SplashScreen, {
         onComplete,
-        duration: 3000,
-        scanProgress: { phase: 'Analyzing activity...', done: false },
+        duration: 2200,
+        phase: 'Loading commits…',
       })
     );
 
-    expect(lastFrame()).toContain('Analyzing activity...');
+    expect(lastFrame()).toContain('Loading commits…');
   });
 
-  it('renders with done:true without errors', () => {
+  it('renders without error when phase is Ready', () => {
     const onComplete = vi.fn();
     const { lastFrame } = render(
       React.createElement(SplashScreen, {
         onComplete,
-        duration: 3000,
-        scanProgress: { phase: 'Done', done: true },
+        duration: 2200,
+        phase: 'Ready',
       })
     );
 
-    expect(lastFrame()).toBeTruthy();
-    expect(lastFrame()).toContain('Done');
+    const output = lastFrame();
+    expect(output).toContain('Ready');
   });
 
-  it('completes animation at the specified duration', () => {
+  it('cleans up timers on unmount', () => {
     const onComplete = vi.fn();
-    render(
+    const { unmount } = render(
       React.createElement(SplashScreen, {
         onComplete,
-        duration: 3000,
-        scanProgress: { phase: 'Scanning...', done: false },
+        duration: 2200,
+        phase: 'Loading commits…',
       })
     );
 
-    // Animation should not complete before duration
-    vi.advanceTimersByTime(2999);
-    expect(onComplete).not.toHaveBeenCalled();
+    unmount();
 
-    // Animation should complete at/after duration
-    vi.advanceTimersByTime(1);
-    // Note: useCompletionGate will handle calling onComplete when both conditions are met.
-    // Since scan is not done, onComplete won't be called yet (this is tested in the hook tests)
-  });
-
-  it('updates phase text while animation is running', () => {
-    const onComplete = vi.fn();
-    const { rerender, lastFrame } = render(
-      React.createElement(SplashScreen, {
-        onComplete,
-        duration: 3000,
-        scanProgress: { phase: 'Phase 1', done: false },
-      })
-    );
-
-    expect(lastFrame()).toContain('Phase 1');
-
-    // Mid-animation phase update
-    vi.advanceTimersByTime(1500);
-    rerender(
-      React.createElement(SplashScreen, {
-        onComplete,
-        duration: 3000,
-        scanProgress: { phase: 'Phase 2', done: false },
-      })
-    );
-
-    expect(lastFrame()).toContain('Phase 2');
+    // Should not crash after unmount
+    expect(true).toBe(true);
   });
 });

@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import { Spinner } from '@inkjs/ui';
-import type { ScanProgress } from './Scanner.js';
-import { useCompletionGate } from '../hooks/useCompletionGate.js';
 
 // ---------------------------------------------------------------------------
 // ASCII art — each letter is 6 rows tall
@@ -51,13 +49,13 @@ function scrambledRows(letterKey: string): string[] {
 // Component
 // ---------------------------------------------------------------------------
 
-interface SplashScreenProps {
+export interface SplashScreenProps {
   onComplete: () => void;
   duration?: number;
-  scanProgress: ScanProgress;
+  phase: string;
 }
 
-export function SplashScreen({ onComplete, duration = 3000, scanProgress }: SplashScreenProps) {
+export function SplashScreen({ onComplete, duration = 2200, phase }: SplashScreenProps) {
   const { stdout } = useStdout();
   const termCols = stdout.columns ?? 80;
   const termRows = stdout.rows ?? 24;
@@ -117,16 +115,13 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
     };
   }, [duration]);
 
-  // Gate onComplete: fire only when both animation AND scan are done
-  useCompletionGate({
-    animationDone,
-    scanDone: scanProgress.done,
-    onComplete: () => {
-      // Trigger fade-out effect, wait for it to render before transitioning
+  // Gate onComplete: fire only when both animation AND startup are done (phase === 'Ready')
+  useEffect(() => {
+    if (animationDone && phase === 'Ready') {
       setExiting(true);
       completionTimeoutRef.current = setTimeout(onComplete, 500);
-    },
-  });
+    }
+  }, [animationDone, phase, onComplete]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -177,11 +172,11 @@ export function SplashScreen({ onComplete, duration = 3000, scanProgress }: Spla
       {/* Spacing */}
       <Box marginTop={2} />
 
-      {/* Spinner + scan-driven status text */}
+      {/* Spinner + phase status text */}
       <Box flexDirection="row" gap={1}>
         <Spinner />
-        <Text color="white" dimColor={exiting || !scanProgress.done}>
-          {scanProgress.phase}
+        <Text color="white" dimColor={exiting || phase === 'Ready'}>
+          {phase}
         </Text>
       </Box>
 

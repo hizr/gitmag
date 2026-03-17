@@ -4,9 +4,8 @@ import { SplashScreen } from './components/SplashScreen.js';
 import { RepoScreen } from './components/RepoScreen.js';
 import { CommitScreen } from './components/CommitScreen.js';
 import { FileDiffScreen } from './components/FileDiffScreen.js';
-import { useScanner } from './components/Scanner.js';
+import { useStartup } from './components/Scanner.js';
 import { useAppInput } from './hooks/useAppInput.js';
-import { useRepository } from './hooks/useRepository.js';
 import type { RepoEntry, CommitEntry, ChangedFile } from './data/mockRepos.js';
 
 export type Route =
@@ -24,8 +23,7 @@ export function App() {
   const [screen, setScreen] = useState<'splash' | 'router'>('splash');
   const [stack, setStack] = useState<Route[]>([{ name: 'repo' }]);
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const scanProgress = useScanner();
-  const { repos, loading: repoLoading, error: repoError } = useRepository(process.cwd());
+  const { repos, repoError, done: startupDone, phase } = useStartup(process.cwd());
 
   const push = (route: Route) => setStack((prev) => [...prev, route]);
   const pop = () => setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
@@ -75,21 +73,21 @@ export function App() {
           }
           setScreen('router');
         }}
-        scanProgress={scanProgress}
+        phase={phase}
       />
     );
   }
 
   if (current.name === 'repo') {
     // Show loading state
-    if (repoLoading) {
+    if (!startupDone) {
       return (
         <Box flexDirection="column" padding={1}>
           <Text color="cyan" bold>
             gitmag
           </Text>
           <Text color="gray" dimColor>
-            Loading repository...
+            {phase}
           </Text>
         </Box>
       );
@@ -137,7 +135,7 @@ export function App() {
       );
     }
 
-    return <RepoScreen repos={repos} selectedIdx={selectedIdx} scanProgress={scanProgress} />;
+    return <RepoScreen repos={repos} selectedIdx={selectedIdx} />;
   }
 
   if (current.name === 'commit') {

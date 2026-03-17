@@ -1,51 +1,112 @@
 import { useEffect, useState } from 'react';
+import type { RepoEntry } from '../data/mockRepos.js';
+import { Repository } from '../data/Repository.js';
 
 export interface ScanProgress {
   phase: string;
   done: boolean;
+  error?: string;
 }
 
-const SCAN_PHASES: Array<{ ms: number; phase: string }> = [
-  { ms: 0, phase: 'Scanning repositories...' },
-  { ms: 1250, phase: 'Indexing commits...' },
-  { ms: 2500, phase: 'Analyzing activity...' },
-  { ms: 3750, phase: 'Preparing digest...' },
-  { ms: 6000, phase: 'Finalizing...' },
-];
+export interface StartupState extends ScanProgress {
+  repos: RepoEntry[];
+  repoError: string | null;
+}
 
-export function useScanner(): ScanProgress {
-  const [progress, setProgress] = useState<ScanProgress>({
-    phase: SCAN_PHASES[0]!.phase,
+/**
+ * Hook to initialize the app: fetch from remote, load commits, index files, and resolve branches.
+ * Returns real progress events as each stage completes.
+ * Errors are non-fatal; the app continues with local data even if fetch fails.
+ * @param repoPath Path to the git repository (e.g., process.cwd())
+ */
+export function useStartup(repoPath: string): StartupState {
+  const [state, setState] = useState<StartupState>({
+    phase: 'Connecting to remote…',
     done: false,
+    repos: [],
+    repoError: null,
   });
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
+    let isMounted = true;
 
-    // Schedule each phase transition (skip index 0 — it's the initial state)
-    for (let i = 1; i < SCAN_PHASES.length; i++) {
-      const { ms, phase } = SCAN_PHASES[i]!;
-      timers.push(
-        setTimeout(() => {
-          setProgress((prev) => ({ ...prev, phase }));
-        }, ms)
-      );
-    }
+    const startup = async () => {
+      try {
+        // Step 1: Open repository
+        const repo = await Repository.open(repoPath);
 
-    // Schedule completion
-    timers.push(
-      setTimeout(
-        () => {
-          setProgress({ phase: SCAN_PHASES[SCAN_PHASES.length - 1]!.phase, done: true });
-        },
-        SCAN_PHASES[SCAN_PHASES.length - 1]!.ms + 1000 /* small buffer after final phase */
-      )
-    );
+        // Step 2: Fetch from remote (non-blocking on failure)
+        const fetchResult = await repo.fetchAll();
+        if (isMounted) {
+          setState((prev) => ({
+            ...prev,
+            phase: fetchResult.ok ? 'Remote data synced' : fetchResult.message,
+            error: fetchResult.ok ? undefined : fetchResult.message,
+          }));
+        }
+
+        // Step 3: Load commits
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading commits…' }));
+        }
+        const commits = await repo.listCommits(100);
+
+        // Step 4: Index changed files for each commit
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Indexing files…' }));
+        }
+        for (const commit of commits) {
+          commit.changedFiles = await repo.getChangedFiles(commit.hash);
+        }
+
+        // Step 5: Resolve branch names for each commit
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Resolving branches…' }));
+        }
+        for (const commit of commits) {
+          commit.branchName = await repo.getBranchName(commit.hash);
+        }
+
+        // Step 6: Mark complete
+        if (isMounted) {
+          setState((prev) => ({
+            ...prev,
+            phase: 'Ready',
+            done: true,
+            repos: [{ path: repo.getPath(), commits }],
+            repoError: null,
+          }));
+        }
+      } catch (err) {
+        let errorMessage = 'Unknown error initializing repository';
+
+        if (err instanceof Error) {
+          errorMessage = err.message;
+          // Include underlying cause if available
+          if ('cause' in err && err.cause instanceof Error) {
+            errorMessage += `\n(${(err.cause as Error).message})`;
+          }
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        }
+
+        if (isMounted) {
+          setState((prev) => ({
+            ...prev,
+            phase: 'Error',
+            done: true,
+            repoError: errorMessage,
+          }));
+        }
+      }
+    };
+
+    startup();
 
     return () => {
-      for (const t of timers) clearTimeout(t);
+      isMounted = false;
     };
-  }, []);
+  }, [repoPath]);
 
-  return progress;
+  return state;
 }

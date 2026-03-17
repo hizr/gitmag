@@ -1,12 +1,10 @@
 import { type ReactNode } from 'react';
 import { Box, Text, useStdout } from 'ink';
-import type { ScanProgress } from './Scanner.js';
 import type { RepoEntry } from '../data/mockRepos.js';
 
 interface RepoScreenProps {
   repos: RepoEntry[];
   selectedIdx: number;
-  scanProgress: ScanProgress;
 }
 
 // ── Panel border helper ───────────────────────────────────────────────────────
@@ -42,7 +40,7 @@ function Panel({ label, width, height, children }: PanelProps) {
   );
 }
 
-export function RepoScreen({ repos, selectedIdx, scanProgress }: RepoScreenProps) {
+export function RepoScreen({ repos, selectedIdx }: RepoScreenProps) {
   const { stdout } = useStdout();
   const termCols = Math.max(stdout.columns ?? 80, 80);
   const termRows = Math.max(stdout.rows ?? 24, 24);
@@ -58,7 +56,6 @@ export function RepoScreen({ repos, selectedIdx, scanProgress }: RepoScreenProps
         <Text bold color="cyan">
           gitmag
         </Text>
-        <Text color="gray">{` — ${scanProgress.phase}`}</Text>
       </Box>
 
       <Box marginBottom={1}>
