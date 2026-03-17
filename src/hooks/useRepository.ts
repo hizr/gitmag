@@ -65,11 +65,20 @@ export function useRepository(path: string): RepositoryState {
         const workingChanges = await repo.getWorkingChanges();
 
         if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading branch info…' }));
+        }
+
+        // Phase 6: Get branch information
+        const headAuthor = commits.length > 0 ? commits[0].author : 'Unknown';
+        const branchInfo = await repo.getBranchInfo(headAuthor);
+
+        if (isMounted) {
           setState({
             repos: [
               {
                 path: repo.getPath(),
                 commits,
+                branchInfo,
               },
             ],
             loading: false,

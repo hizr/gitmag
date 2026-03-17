@@ -1,5 +1,5 @@
 import { simpleGit } from 'simple-git';
-import type { CommitEntry, ChangedFile, WorkingChanges } from './mockRepos.js';
+import type { CommitEntry, ChangedFile, WorkingChanges, BranchInfo } from './mockRepos.js';
 import type { SimpleGit } from 'simple-git';
 
 /**
@@ -264,6 +264,75 @@ export class Repository {
       return result;
     } catch {
       // git status failed or repo is in an invalid state; return empty
+      return result;
+    }
+  }
+
+  /**
+   * Fetch branch information: current branch, remote tracking branch,
+   * ahead/behind counts, HEAD author, and repo path.
+   * @param headCommitAuthor Author of the HEAD commit (from commits array)
+   */
+  async getBranchInfo(headCommitAuthor: string): Promise<BranchInfo> {
+    const result: BranchInfo = {
+      currentBranch: '(unknown)',
+      remoteBranch: null,
+      ahead: 0,
+      behind: 0,
+      headAuthor: headCommitAuthor,
+      repoPath: this.basePath,
+    };
+
+    try {
+      // Get current branch name using symbolic-ref
+      try {
+        const branchOutput = await this.git.raw(['symbolic-ref', '--short', 'HEAD']);
+        result.currentBranch = branchOutput.trim();
+      } catch {
+        // Detached HEAD or other issue
+        try {
+          const headHash = await this.git.raw(['rev-parse', '--short', 'HEAD']);
+          result.currentBranch = `(detached HEAD: ${headHash.trim()})`;
+        } catch {
+          result.currentBranch = '(unknown)';
+        }
+      }
+
+      // Get remote tracking branch
+      try {
+        const upstreamOutput = await this.git.raw([
+          'rev-parse',
+          '--abbrev-ref',
+          '--symbolic-full-name',
+          '@{u}',
+        ]);
+        const upstream = upstreamOutput.trim();
+        if (upstream && upstream !== '@{u}') {
+          // Upstream exists and is not the literal "@{u}"
+          result.remoteBranch = upstream;
+
+          // Get ahead/behind counts only if upstream exists
+          try {
+            const countOutput = await this.git.raw([
+              'rev-list',
+              '--left-right',
+              '--count',
+              'HEAD...@{u}',
+            ]);
+            const [ahead, behind] = countOutput.trim().split('\t').map(Number);
+            result.ahead = ahead || 0;
+            result.behind = behind || 0;
+          } catch {
+            // Could not get ahead/behind; leave as 0
+          }
+        }
+      } catch {
+        // No upstream configured; leave remoteBranch as null
+      }
+
+      return result;
+    } catch {
+      // Fallback in case of unexpected error
       return result;
     }
   }

@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { Box, Text, useStdout } from 'ink';
 import type { ScanProgress } from './Scanner.js';
-import type { RepoEntry } from '../data/mockRepos.js';
+import type { RepoEntry, BranchInfo } from '../data/mockRepos.js';
 
 interface RepoScreenProps {
   repos: RepoEntry[];
@@ -42,6 +42,75 @@ function Panel({ label, width, height, children }: PanelProps) {
   );
 }
 
+// ── Branch info panel ─────────────────────────────────────────────────────────
+
+interface BranchInfoPanelProps {
+  branchInfo: BranchInfo | undefined;
+  width: number;
+}
+
+function BranchInfoPanel({ branchInfo, width }: BranchInfoPanelProps) {
+  if (!branchInfo) {
+    return (
+      <Panel label="Branch Info" width={width} height={5}>
+        <Text color="gray" dimColor>
+          Loading branch information…
+        </Text>
+      </Panel>
+    );
+  }
+
+  const halfWidth = Math.floor((width - 6) / 2); // Account for borders and gap
+  const leftColWidth = halfWidth;
+  const rightColWidth = width - halfWidth - 6;
+
+  // Format ahead/behind display
+  const aheadBehindStr =
+    branchInfo.remoteBranch && (branchInfo.ahead > 0 || branchInfo.behind > 0)
+      ? `↑${branchInfo.ahead} ↓${branchInfo.behind}`
+      : branchInfo.remoteBranch
+        ? '✓'
+        : '—';
+
+  // Format working changes summary (from the repo, we'd need to pass it separately)
+  // For now, just show the branch status
+  const statusStr = branchInfo.remoteBranch
+    ? `${branchInfo.remoteBranch}  ${aheadBehindStr}`
+    : '(no upstream)';
+
+  return (
+    <Panel label="Branch Info" width={width} height={5}>
+      <Box flexDirection="column">
+        <Box marginBottom={0}>
+          <Box width={leftColWidth}>
+            <Text color="cyan">Branch</Text>
+            <Text> </Text>
+            <Text bold>{branchInfo.currentBranch}</Text>
+          </Box>
+          <Box width={rightColWidth}>
+            <Text color="cyan">Path</Text>
+            <Text> </Text>
+            <Text>{branchInfo.repoPath}</Text>
+          </Box>
+        </Box>
+
+        <Box marginBottom={0}>
+          <Box width={leftColWidth}>
+            <Text color="cyan">Remote</Text>
+            <Text> </Text>
+            <Text>{statusStr}</Text>
+          </Box>
+          <Box width={rightColWidth}>
+            <Text color="cyan">Head</Text>
+            <Text> </Text>
+            <Text>{branchInfo.headAuthor}</Text>
+          </Box>
+        </Box>
+      </Box>
+    </Panel>
+  );
+}
+
 export function RepoScreen({ repos, selectedIdx, scanProgress }: RepoScreenProps) {
   const { stdout } = useStdout();
   const termCols = Math.max(stdout.columns ?? 80, 80);
@@ -49,7 +118,10 @@ export function RepoScreen({ repos, selectedIdx, scanProgress }: RepoScreenProps
 
   // ── Layout dimensions ────────────────────────────────────────────────
   const availableRows = termRows - 4; // header (2) + footer (2)
-  const panelHeight = Math.max(availableRows, 5);
+  const branchPanelHeight = 5; // Fixed height for branch info
+  const repoPanelHeight = Math.max(availableRows - branchPanelHeight - 1, 5); // Remaining rows with gap
+
+  const selectedRepo = repos[selectedIdx];
 
   return (
     <Box flexDirection="column" width={termCols} height={termRows} paddingX={1}>
@@ -65,8 +137,13 @@ export function RepoScreen({ repos, selectedIdx, scanProgress }: RepoScreenProps
         <Text color="gray">{'─'.repeat(termCols - 2)}</Text>
       </Box>
 
+      {/* Branch info panel */}
+      <Box marginBottom={1}>
+        <BranchInfoPanel branchInfo={selectedRepo?.branchInfo} width={termCols - 2} />
+      </Box>
+
       {/* Repo list panel */}
-      <Panel label="Repositories" width={termCols - 2} height={panelHeight}>
+      <Panel label="Repositories" width={termCols - 2} height={repoPanelHeight}>
         <Box flexDirection="column">
           {repos.map((repo, repoIdx) => {
             const isSelected = repoIdx === selectedIdx;

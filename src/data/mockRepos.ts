@@ -12,6 +12,15 @@ export interface WorkingChanges {
   untracked: ChangedFile[];
 }
 
+export interface BranchInfo {
+  currentBranch: string;
+  remoteBranch: string | null;
+  ahead: number;
+  behind: number;
+  headAuthor: string;
+  repoPath: string;
+}
+
 export interface CommitEntry {
   hash: string;
   message: string;
@@ -26,4 +35,5 @@ export interface CommitEntry {
 export interface RepoEntry {
   path: string;
   commits: CommitEntry[];
+  branchInfo?: BranchInfo;
 }
