@@ -28,7 +28,7 @@ interface CommitScreenProps {
   initialSelectedCommitIdx?: number;
   initialSelectedFileIdx?: number;
   onBack: () => void;
-  onOpenDiff?: (commit: CommitEntry, file: ChangedFile, fileIdx: number) => void;
+  onOpenDiff?: (commit: CommitEntry, file: ChangedFile, fileIdx: number, commitIdx: number) => void;
   workingChanges?: WorkingChanges | null;
 }
 
@@ -329,7 +329,8 @@ export function CommitScreen({
             status: selectedFile.status as any,
             path: selectedFile.path,
           },
-          selectedFileIdx
+          selectedFileIdx,
+          selectedCommitIdx
         );
       }
       return;

@@ -19,6 +19,7 @@ export type Route =
       file: ChangedFile;
       getDiff: () => Promise<string>;
       selectedFileIdx: number;
+      selectedCommitIdx: number;
     };
 
 export function App() {
@@ -168,7 +169,7 @@ export function App() {
           setSelectedFileIdx(0);
         }}
         workingChanges={workingChanges}
-        onOpenDiff={(commit, file, fileIdx) => {
+        onOpenDiff={(commit, file, fileIdx, commitIdx) => {
           if (repository) {
             const getDiff = () => repository.getDiff(commit.hash, file.path);
             push({
@@ -178,8 +179,10 @@ export function App() {
               file,
               getDiff,
               selectedFileIdx: fileIdx,
+              selectedCommitIdx: commitIdx,
             });
             setSelectedFileIdx(fileIdx);
+            setSelectedCommitIdx(commitIdx);
           }
         }}
       />
@@ -196,6 +199,7 @@ export function App() {
         onBack={() => {
           pop();
           setSelectedFileIdx(current.selectedFileIdx);
+          setSelectedCommitIdx(current.selectedCommitIdx);
         }}
       />
     );
