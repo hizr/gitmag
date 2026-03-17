@@ -1,7 +1,13 @@
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput } from 'ink';
 import clipboard from 'clipboardy';
-import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
+import type {
+  RepoEntry,
+  CommitEntry,
+  ChangedFile,
+  WorkingChanges,
+  BranchInfo,
+} from '../data/mockRepos.js';
 import { buildGraphLines } from '../utils/git-graph.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -150,6 +156,74 @@ function GraphRow({ prefix, commit, selected, maxWidth }: GraphRowProps) {
   );
 }
 
+// ── Branch info panel ─────────────────────────────────────────────────────────
+
+interface BranchInfoPanelProps {
+  branchInfo: BranchInfo | undefined;
+  width: number;
+}
+
+function BranchInfoPanel({ branchInfo, width }: BranchInfoPanelProps) {
+  if (!branchInfo) {
+    return (
+      <Panel label="Branch Info" focused={false} width={width} height={5}>
+        <Text color="gray" dimColor>
+          Loading branch information…
+        </Text>
+      </Panel>
+    );
+  }
+
+  const halfWidth = Math.floor((width - 6) / 2); // Account for borders and gap
+  const leftColWidth = halfWidth;
+  const rightColWidth = width - halfWidth - 6;
+
+  // Format ahead/behind display
+  const aheadBehindStr =
+    branchInfo.remoteBranch && (branchInfo.ahead > 0 || branchInfo.behind > 0)
+      ? `↑${branchInfo.ahead} ↓${branchInfo.behind}`
+      : branchInfo.remoteBranch
+        ? '✓'
+        : '—';
+
+  // Format remote tracking display
+  const statusStr = branchInfo.remoteBranch
+    ? `${branchInfo.remoteBranch}  ${aheadBehindStr}`
+    : '(no upstream)';
+
+  return (
+    <Panel label="Branch Info" focused={false} width={width} height={5}>
+      <Box flexDirection="column">
+        <Box marginBottom={0}>
+          <Box width={leftColWidth}>
+            <Text color="cyan">Branch</Text>
+            <Text> </Text>
+            <Text bold>{branchInfo.currentBranch}</Text>
+          </Box>
+          <Box width={rightColWidth}>
+            <Text color="cyan">Path</Text>
+            <Text> </Text>
+            <Text>{branchInfo.repoPath}</Text>
+          </Box>
+        </Box>
+
+        <Box marginBottom={0}>
+          <Box width={leftColWidth}>
+            <Text color="cyan">Remote</Text>
+            <Text> </Text>
+            <Text>{statusStr}</Text>
+          </Box>
+          <Box width={rightColWidth}>
+            <Text color="cyan">Head</Text>
+            <Text> </Text>
+            <Text>{branchInfo.headAuthor}</Text>
+          </Box>
+        </Box>
+      </Box>
+    </Panel>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function CommitScreen({
@@ -228,8 +302,10 @@ export function CommitScreen({
 
   // ── Layout dimensions ────────────────────────────────────────────────
   const availableRows = termRows - 4; // header (2) + footer (2)
-  const graphHeight = Math.max(Math.floor(availableRows * 0.4), 5);
-  const bottomHeight = Math.max(availableRows - graphHeight, 5);
+  const branchPanelHeight = 5; // Fixed height for branch info
+  const remainingRows = Math.max(availableRows - branchPanelHeight - 1, 10); // After branch panel + gap
+  const graphHeight = Math.max(Math.floor(remainingRows * 0.4), 5);
+  const bottomHeight = Math.max(remainingRows - graphHeight, 5);
   const halfWidth = Math.floor((termCols - 2) / 2);
   const leftWidth = halfWidth;
   const rightWidth = termCols - halfWidth - 2;
@@ -428,6 +504,11 @@ export function CommitScreen({
 
       <Box marginBottom={1}>
         <Text color="gray">{'─'.repeat(termCols - 2)}</Text>
+      </Box>
+
+      {/* ── Branch info panel ────────────────────────────────────────── */}
+      <Box marginBottom={1}>
+        <BranchInfoPanel branchInfo={repo.branchInfo} width={termCols - 2} />
       </Box>
 
       {/* ── Graph panel ──────────────────────────────────────────────── */}
