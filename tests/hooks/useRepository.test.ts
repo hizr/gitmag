@@ -23,6 +23,7 @@ describe('useRepository', () => {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue([]),
       getChangedFiles: vi.fn().mockResolvedValue([]),
+      getBranchName: vi.fn().mockResolvedValue(undefined),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -53,6 +54,7 @@ describe('useRepository', () => {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue(mockCommits),
       getChangedFiles: vi.fn().mockResolvedValue([]),
+      getBranchName: vi.fn().mockResolvedValue(undefined),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -91,6 +93,7 @@ describe('useRepository', () => {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue([]),
       getChangedFiles: vi.fn().mockResolvedValue([]),
+      getBranchName: vi.fn().mockResolvedValue(undefined),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo

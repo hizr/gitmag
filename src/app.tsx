@@ -102,7 +102,23 @@ export function App() {
           <Text color="cyan" bold>
             gitmag
           </Text>
-          <Text color="red">{repoError}</Text>
+          <Box
+            flexDirection="column"
+            marginTop={1}
+            borderStyle="round"
+            borderColor="red"
+            padding={1}
+          >
+            <Text color="red" bold>
+              Error Loading Repository
+            </Text>
+            <Text color="white">{repoError}</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color="gray" dimColor>
+              Press q to quit
+            </Text>
+          </Box>
         </Box>
       );
     }

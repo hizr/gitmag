@@ -5,11 +5,13 @@ import type { SimpleGit } from 'simple-git';
 /**
  * Repository wraps simple-git to provide typed, dedicated functions for
  * retrieving commit and file data from a git repository.
+ * Includes caching for improved performance with large repositories.
  */
 export class Repository {
   private constructor(
     private git: SimpleGit,
-    private basePath: string
+    private basePath: string,
+    private commitCache: Map<number, CommitEntry[]> = new Map()
   ) {}
 
   /**
@@ -23,7 +25,23 @@ export class Repository {
       await git.revparse(['--git-dir']);
       return new Repository(git, path);
     } catch (err) {
-      throw new Error(`Not a git repository: ${path}`, { cause: err });
+      const message = err instanceof Error ? err.message : String(err);
+      let helpMessage = `Not a git repository: ${path}`;
+
+      // Provide helpful suggestions based on common error patterns
+      if (message.toLowerCase().includes('fatal')) {
+        helpMessage +=
+          '\n\nSuggestion: Run "git init" to initialize this directory as a git repository.';
+      } else if (message.toLowerCase().includes('permission')) {
+        helpMessage += '\n\nSuggestion: Check that you have read permissions for this directory.';
+      } else if (
+        message.toLowerCase().includes('enoent') ||
+        message.toLowerCase().includes('no such')
+      ) {
+        helpMessage += `\n\nSuggestion: The directory "${path}" does not exist.`;
+      }
+
+      throw new Error(helpMessage, { cause: err });
     }
   }
 
@@ -36,12 +54,18 @@ export class Repository {
 
   /**
    * Fetch a list of commits with full metadata (hash, message, author, date, etc.).
+   * Results are cached based on limit to improve performance.
    * @param limit Max number of commits to fetch (default: 100)
    */
   async listCommits(limit = 100): Promise<CommitEntry[]> {
+    // Check cache first
+    if (this.commitCache.has(limit)) {
+      return this.commitCache.get(limit)!;
+    }
+
     const log = await this.git.log({ maxCount: limit, symmetric: false });
 
-    return log.all.map((entry: unknown) => {
+    const commits = log.all.map((entry: unknown) => {
       const e = entry as {
         hash: string;
         message: string;
@@ -61,6 +85,10 @@ export class Repository {
         changedFiles: [], // Populated separately via getChangedFiles
       };
     });
+
+    // Cache the results
+    this.commitCache.set(limit, commits);
+    return commits;
   }
 
   /**
@@ -110,6 +138,42 @@ export class Repository {
     } catch {
       // File doesn't exist in this commit or commit is invalid
       return '';
+    }
+  }
+
+  /**
+   * Get the primary branch name that contains the given commit.
+   * First tries the current HEAD branch, then falls back to first local branch.
+   * @param hash Commit hash
+   */
+  async getBranchName(hash: string): Promise<string | undefined> {
+    try {
+      // Try to get the current branch first (where HEAD points)
+      const status = await this.git.status();
+      const currentBranch = status.current;
+
+      // Check if this commit is reachable from the current branch
+      if (currentBranch) {
+        try {
+          await this.git.raw(['merge-base', '--is-ancestor', hash, 'HEAD']);
+          return currentBranch;
+        } catch {
+          // Not in current branch, try others
+        }
+      }
+
+      // Fall back to getting all branches containing this commit
+      const branches = await this.git.raw(['branch', '--contains', hash]);
+      const branchList = branches
+        .split('\n')
+        .map((b) => b.trim())
+        .filter(Boolean)
+        .map((b) => b.replace(/^\*\s+/, '')); // Remove '* ' prefix if present
+
+      return branchList[0]; // Return first branch found
+    } catch {
+      // Could not determine branch; return undefined
+      return undefined;
     }
   }
 }
