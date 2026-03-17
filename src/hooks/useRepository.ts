@@ -46,12 +46,13 @@ export function useRepository(path: string): RepositoryState {
           commit.changedFiles = await repo.getChangedFiles(commit.hash);
         }
         if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Resolving branches…' }));
+          setState((prev) => ({ ...prev, phase: 'Loading refs…' }));
         }
 
-        // Phase 4: Get branch names for each commit
+        // Phase 4: Get all refs (branches, tags, HEAD) in a single call
+        const refMap = await repo.getRefs();
         for (const commit of commits) {
-          commit.branchName = await repo.getBranchName(commit.hash);
+          commit.refs = refMap.get(commit.hash) || [];
         }
 
         if (isMounted) {

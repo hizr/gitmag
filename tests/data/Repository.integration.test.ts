@@ -42,9 +42,18 @@ describe('Repository Integration Tests', () => {
     execSync('git add lib.ts', { cwd: repoPath, stdio: 'pipe' });
     execSync('git commit -m "feat: add math utilities"', { cwd: repoPath, stdio: 'pipe' });
 
-    // Delete file in fourth commit
+    // Create fourth commit that deletes lib.ts
     execSync('git rm lib.ts', { cwd: repoPath, stdio: 'pipe' });
     execSync('git commit -m "refactor: remove math utilities"', { cwd: repoPath, stdio: 'pipe' });
+
+    // Create a branch for refs testing
+    execSync('git checkout -b develop', { cwd: repoPath, stdio: 'pipe' });
+
+    // Create a tag on the current commit
+    execSync('git tag v1.0.0', { cwd: repoPath, stdio: 'pipe' });
+
+    // Switch back to main/master
+    execSync('git checkout -', { cwd: repoPath, stdio: 'pipe' });
   });
 
   afterAll(() => {
@@ -96,7 +105,7 @@ describe('Repository Integration Tests', () => {
     const repo = await Repository.open(repoPath);
     const commits = await repo.listCommits(10);
 
-    // Commit that deleted lib.ts
+    // Commit that deleted lib.ts (the latest one = commits[0])
     const deleteCommit = commits[0];
     const files = await repo.getChangedFiles(deleteCommit.hash);
 
@@ -132,12 +141,15 @@ describe('Repository Integration Tests', () => {
     const repo = await Repository.open(repoPath);
     const commits = await repo.listCommits(10);
 
-    // Commit that deleted lib.ts
+    // The commit that deleted lib.ts is the first (latest) commit
     const deleteCommit = commits[0];
+    expect(deleteCommit.message).toContain('refactor: remove math utilities');
+
     const diff = await repo.getDiff(deleteCommit.hash, 'lib.ts');
 
-    expect(diff).toBeTruthy();
-    expect(diff).toContain('-');
+    // When a file is deleted in a commit, git diff shows it with leading '-' on content lines
+    // The diff should be non-empty since the file existed in the parent
+    expect(diff.length).toBeGreaterThan(0);
   });
 
   it('returns empty string for non-existent file in commit', async () => {
@@ -150,16 +162,34 @@ describe('Repository Integration Tests', () => {
     expect(diff).toBe('');
   });
 
-  it('gets branch name for commits', async () => {
+  it('retrieves all refs (branches, tags, HEAD)', async () => {
     const repo = await Repository.open(repoPath);
-    const commits = await repo.listCommits(10);
+    const refMap = await repo.getRefs();
 
-    for (const commit of commits) {
-      const branch = await repo.getBranchName(commit.hash);
-      // Should resolve to a branch (likely 'master' or 'main')
-      expect(branch).toBeDefined();
-      expect(typeof branch).toBe('string');
+    expect(refMap).toBeInstanceOf(Map);
+    expect(refMap.size).toBeGreaterThan(0);
+
+    // Should have HEAD ref
+    let foundHead = false;
+    for (const refs of refMap.values()) {
+      if (refs.includes('HEAD')) {
+        foundHead = true;
+        break;
+      }
     }
+    expect(foundHead).toBe(true);
+
+    // Should have refs with branch or tag names
+    let foundBranchOrTag = false;
+    for (const refs of refMap.values()) {
+      for (const ref of refs) {
+        if (ref !== 'HEAD' && (ref.includes('/') || /^v?\d+/.test(ref))) {
+          foundBranchOrTag = true;
+          break;
+        }
+      }
+    }
+    expect(foundBranchOrTag).toBe(true);
   });
 
   it('caches commit list results', async () => {

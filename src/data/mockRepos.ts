@@ -13,7 +13,7 @@ export interface CommitEntry {
   author: string;
   body: string;
   parentHash: string[];
-  branchName?: string;
+  refs: string[];
   changedFiles: ChangedFile[];
 }
 

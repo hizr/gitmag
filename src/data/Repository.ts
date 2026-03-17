@@ -81,7 +81,7 @@ export class Repository {
         author: e.author_name || 'Unknown',
         body: e.body || '',
         parentHash: e.parents ? e.parents.split(' ').filter(Boolean) : [],
-        branchName: undefined, // simple-git log doesn't expose branch name easily; leave undefined
+        refs: [], // Populated separately via getRefs
         changedFiles: [], // Populated separately via getChangedFiles
       };
     });
@@ -142,38 +142,62 @@ export class Repository {
   }
 
   /**
-   * Get the primary branch name that contains the given commit.
-   * First tries the current HEAD branch, then falls back to first local branch.
-   * @param hash Commit hash
+   * Fetch all refs (branches, tags, HEAD) and map them to commit hashes.
+   * Returns a Map<commitHash, string[]> where each value is an array of ref labels.
+   * Example: "a1b2c3d" → ["HEAD", "main", "origin/main"]
+   *
+   * This is a single call (no per-commit overhead) and replaces the expensive
+   * per-commit getBranchName() loop.
    */
-  async getBranchName(hash: string): Promise<string | undefined> {
-    try {
-      // Try to get the current branch first (where HEAD points)
-      const status = await this.git.status();
-      const currentBranch = status.current;
+  async getRefs(): Promise<Map<string, string[]>> {
+    const refMap = new Map<string, string[]>();
 
-      // Check if this commit is reachable from the current branch
-      if (currentBranch) {
-        try {
-          await this.git.raw(['merge-base', '--is-ancestor', hash, 'HEAD']);
-          return currentBranch;
-        } catch {
-          // Not in current branch, try others
+    try {
+      // Get all refs: local branches, remote tracking branches, and tags
+      const refOutput = await this.git.raw([
+        'for-each-ref',
+        '--format=%(objectname:short) %(refname:short)',
+        'refs/heads',
+        'refs/remotes',
+        'refs/tags',
+      ]);
+
+      // Parse: each line is "<shortHash> <refName>"
+      refOutput
+        .split('\n')
+        .filter(Boolean)
+        .forEach((line: string) => {
+          const parts = line.split(' ');
+          if (parts.length >= 2) {
+            const hash = parts[0];
+            const refName = parts.slice(1).join(' '); // Handle ref names with spaces
+            if (!refMap.has(hash)) {
+              refMap.set(hash, []);
+            }
+            refMap.get(hash)!.push(refName);
+          }
+        });
+
+      // Also add HEAD (points to current branch/commit)
+      try {
+        const headOutput = await this.git.raw(['rev-parse', '--short', 'HEAD']);
+        const headHash = headOutput.trim();
+        if (headHash && !refMap.has(headHash)) {
+          refMap.set(headHash, ['HEAD']);
+        } else if (headHash) {
+          const refs = refMap.get(headHash)!;
+          if (!refs.includes('HEAD')) {
+            refs.unshift('HEAD'); // Put HEAD first
+          }
         }
+      } catch {
+        // HEAD may not exist in initial commit scenarios; ignore
       }
 
-      // Fall back to getting all branches containing this commit
-      const branches = await this.git.raw(['branch', '--contains', hash]);
-      const branchList = branches
-        .split('\n')
-        .map((b) => b.trim())
-        .filter(Boolean)
-        .map((b) => b.replace(/^\*\s+/, '')); // Remove '* ' prefix if present
-
-      return branchList[0]; // Return first branch found
+      return refMap;
     } catch {
-      // Could not determine branch; return undefined
-      return undefined;
+      // git for-each-ref failed; return empty map
+      return new Map();
     }
   }
 }

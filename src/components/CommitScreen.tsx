@@ -71,7 +71,14 @@ interface GraphRowProps {
 function GraphRow({ prefix, commit, selected, maxWidth }: GraphRowProps) {
   const HASH_W = 8; // 7 chars + 1 space
   const metaWidth = 22; // date (10) + gap (2) + author (truncated to 10)
-  const msgWidth = Math.max(maxWidth - prefix.length - HASH_W - metaWidth - 2, 10);
+
+  // Render ref badges
+  const refBadges = commit.refs.map((ref) => `[${ref}]`);
+
+  const badgeText = refBadges.length > 0 ? ' ' + refBadges.join(' ') : '';
+  const badgeWidth = badgeText.length;
+  const msgWidth = Math.max(maxWidth - prefix.length - HASH_W - metaWidth - badgeWidth - 2, 10);
+
   const hash = commit.hash.slice(0, 7).padEnd(7);
   const message = commit.message.slice(0, msgWidth).padEnd(msgWidth);
   const author = commit.author.slice(0, 12).padEnd(12);
@@ -92,6 +99,31 @@ function GraphRow({ prefix, commit, selected, maxWidth }: GraphRowProps) {
       >
         {message}
       </Text>
+      {/* Render ref badges with color-coding */}
+      {commit.refs.map((ref, idx) => {
+        let color: string;
+        if (ref === 'HEAD') {
+          color = 'cyan';
+        } else if (ref.startsWith('origin/')) {
+          color = 'yellow';
+        } else if (ref.startsWith('refs/tags/') || /^v?\d+\.\d+/.test(ref)) {
+          color = 'magenta';
+        } else {
+          color = 'green';
+        }
+        return (
+          <Text
+            key={idx}
+            color={color}
+            bold={ref === 'HEAD'}
+            backgroundColor={bg ? 'blue' : undefined}
+          >
+            {' ['}
+            {ref}
+            {']'}
+          </Text>
+        );
+      })}
       <Text color="magenta" backgroundColor={bg ? 'blue' : undefined}>
         {' '}
         {author}
@@ -249,7 +281,10 @@ export function CommitScreen({
     { label: 'Hash  ', value: selectedCommit.hash },
     { label: 'Author', value: selectedCommit.author },
     { label: 'Date  ', value: selectedCommit.date },
-    { label: 'Branch', value: selectedCommit.branchName ?? '—' },
+    {
+      label: 'Refs  ',
+      value: selectedCommit.refs.length > 0 ? selectedCommit.refs.join(', ') : '—',
+    },
   ];
   const bodyLines = selectedCommit.body ? ['', ...selectedCommit.body.split('\n')] : [];
 

@@ -11,6 +11,7 @@ function commit(hash: string, parentHash: string[], message = 'msg'): CommitEntr
     author: 'Test',
     body: '',
     parentHash,
+    refs: [],
     changedFiles: [],
   };
 }
@@ -102,5 +103,21 @@ describe('buildGraphLines', () => {
     for (const line of lines) {
       expect(typeof line.column).toBe('number');
     }
+  });
+
+  // ── Refs passthrough ─────────────────────────────────────────────────
+  it('carries refs from commit to GraphLine', () => {
+    const commitWithRefs: CommitEntry = {
+      hash: 'abc123',
+      message: 'test commit',
+      date: '2026-01-01',
+      author: 'Test',
+      body: '',
+      parentHash: [],
+      refs: ['HEAD', 'main', 'v1.0.0'],
+      changedFiles: [],
+    };
+    const lines = buildGraphLines([commitWithRefs]);
+    expect(lines[0].commit.refs).toEqual(['HEAD', 'main', 'v1.0.0']);
   });
 });

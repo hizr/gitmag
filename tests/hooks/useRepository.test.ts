@@ -23,7 +23,7 @@ describe('useRepository', () => {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue([]),
       getChangedFiles: vi.fn().mockResolvedValue([]),
-      getBranchName: vi.fn().mockResolvedValue(undefined),
+      getRefs: vi.fn().mockResolvedValue(new Map()),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -47,7 +47,7 @@ describe('useRepository', () => {
         author: 'Test Author',
         body: 'test body',
         parentHash: [],
-        branchName: undefined,
+        refs: [],
         changedFiles: [],
       },
     ];
@@ -56,7 +56,7 @@ describe('useRepository', () => {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue(mockCommits),
       getChangedFiles: vi.fn().mockResolvedValue([]),
-      getBranchName: vi.fn().mockResolvedValue(undefined),
+      getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -72,6 +72,7 @@ describe('useRepository', () => {
     expect(result.current.repos).toHaveLength(1);
     expect(result.current.repos[0].path).toBe(mockRepoPath);
     expect(result.current.repos[0].commits).toHaveLength(1);
+    expect(result.current.repos[0].commits[0].refs).toEqual(['main']);
     expect(result.current.repository).toBe(mockRepo);
   });
 
@@ -97,7 +98,7 @@ describe('useRepository', () => {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue([]),
       getChangedFiles: vi.fn().mockResolvedValue([]),
-      getBranchName: vi.fn().mockResolvedValue(undefined),
+      getRefs: vi.fn().mockResolvedValue(new Map()),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -120,7 +121,7 @@ describe('useRepository', () => {
         author: 'Test Author',
         body: 'test body',
         parentHash: [],
-        branchName: undefined,
+        refs: [],
         changedFiles: [],
       },
     ];
@@ -129,7 +130,7 @@ describe('useRepository', () => {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue(mockCommits),
       getChangedFiles: vi.fn().mockResolvedValue([]),
-      getBranchName: vi.fn().mockResolvedValue('main'),
+      getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
