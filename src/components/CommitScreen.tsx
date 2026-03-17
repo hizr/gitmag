@@ -208,12 +208,16 @@ export function CommitScreen({
 
   const selectedCommit: CommitEntry = graphLines[selectedCommitIdx]?.commit ?? repo.commits[0]!;
 
-  // Reset bottom-panel scroll when selection changes
+  // Reset bottom-panel scroll when selection changes, but preserve file selection
+  // when returning from diff view (indicated by initialSelectedFileIdx > 0)
   useEffect(() => {
     setInfoScroll(0);
     setFilesScroll(0);
-    setSelectedFileIdx(0);
-  }, [selectedCommitIdx]);
+    // Only reset file selection if we're not returning from a diff view
+    if (initialSelectedFileIdx === 0) {
+      setSelectedFileIdx(0);
+    }
+  }, [selectedCommitIdx, initialSelectedFileIdx]);
 
   // Restore focus to 'files' when returning from diff view
   useEffect(() => {
