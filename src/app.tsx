@@ -1,16 +1,13 @@
 import { useState } from 'react';
 import { Box, Text } from 'ink';
 import { SplashScreen } from './components/SplashScreen.js';
-import { RepoScreen } from './components/RepoScreen.js';
 import { CommitScreen } from './components/CommitScreen.js';
 import { FileDiffScreen } from './components/FileDiffScreen.js';
-import { useAppInput } from './hooks/useAppInput.js';
 import { useRepository } from './hooks/useRepository.js';
 import type { ScanProgress } from './components/Scanner.js';
 import type { RepoEntry, CommitEntry, ChangedFile } from './data/mockRepos.js';
 
 export type Route =
-  | { name: 'repo' }
   | { name: 'commit'; repoPath: string; repo: RepoEntry }
   | {
       name: 'diff';
@@ -24,8 +21,7 @@ export type Route =
 
 export function App() {
   const [screen, setScreen] = useState<'splash' | 'router'>('splash');
-  const [stack, setStack] = useState<Route[]>([{ name: 'repo' }]);
-  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [stack, setStack] = useState<Route[]>([]);
   const [selectedCommitIdx, setSelectedCommitIdx] = useState(0);
   const [selectedFileIdx, setSelectedFileIdx] = useState(0);
   const {
@@ -45,42 +41,10 @@ export function App() {
 
   const push = (route: Route) => setStack((prev) => [...prev, route]);
   const pop = () => setStack((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
-  const current = stack[stack.length - 1]!;
+  const current = stack[stack.length - 1];
 
-  // Centralized input handler for navigation, selection, and quit
-  // This hook is ALWAYS called, but only active when screen === 'router'
-  // On the commit and diff screens, they own their own input — disable global nav.
-  const isCommitOrDiffScreen = current.name === 'commit' || current.name === 'diff';
-  useAppInput({
-    screen,
-    onUp: isCommitOrDiffScreen ? undefined : () => setSelectedIdx((prev) => Math.max(prev - 1, 0)),
-    onDown: isCommitOrDiffScreen
-      ? undefined
-      : () =>
-          setSelectedIdx((prev) => {
-            // Dynamic max based on current screen
-            if (current.name === 'repo') {
-              return Math.min(prev + 1, repos.length - 1);
-            }
-            return prev;
-          }),
-    onSelect: () => {
-      if (current.name === 'repo') {
-        const selectedRepo = repos[selectedIdx];
-        if (selectedRepo) {
-          push({ name: 'commit', repoPath: selectedRepo.path, repo: selectedRepo });
-          setSelectedCommitIdx(0); // Reset commit selection for next screen
-          setSelectedFileIdx(0); // Reset file selection for next screen
-        }
-      }
-    },
-    onBack: isCommitOrDiffScreen
-      ? undefined
-      : () => {
-          pop();
-          setSelectedIdx(0); // Reset selection when going back
-        },
-  });
+  // No longer need to manage repo list navigation — all screens handle their own input
+  // useAppInput only needed for quit key, but that's handled by root shell wrapper
 
   if (screen === 'splash') {
     return (
@@ -90,6 +54,11 @@ export function App() {
           if (process.stdout.isTTY) {
             process.stdout.write('\u001B[2J\u001B[0f');
           }
+          // Navigate directly to commit screen with the first (and only) repo
+          const repo = repos[0];
+          if (repo) {
+            setStack([{ name: 'commit', repoPath: repo.path, repo }]);
+          }
           setScreen('router');
         }}
         scanProgress={scanProgress}
@@ -97,64 +66,53 @@ export function App() {
     );
   }
 
-  if (current.name === 'repo') {
-    // Show loading state
-    if (repoLoading) {
-      return (
-        <Box flexDirection="column" padding={1}>
-          <Text color="cyan" bold>
-            gitmag
+  // Handle error or empty state (shouldn't happen if splash waits for done, but safety check)
+  if (repoError) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text color="cyan" bold>
+          gitmag
+        </Text>
+        <Box flexDirection="column" marginTop={1} borderStyle="round" borderColor="red" padding={1}>
+          <Text color="red" bold>
+            Error Loading Repository
           </Text>
+          <Text color="white">{repoError}</Text>
+        </Box>
+        <Box marginTop={1}>
           <Text color="gray" dimColor>
-            Loading repository...
+            Press q to quit
           </Text>
         </Box>
-      );
-    }
+      </Box>
+    );
+  }
 
-    // Show error state
-    if (repoError) {
-      return (
-        <Box flexDirection="column" padding={1}>
-          <Text color="cyan" bold>
-            gitmag
-          </Text>
-          <Box
-            flexDirection="column"
-            marginTop={1}
-            borderStyle="round"
-            borderColor="red"
-            padding={1}
-          >
-            <Text color="red" bold>
-              Error Loading Repository
-            </Text>
-            <Text color="white">{repoError}</Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text color="gray" dimColor>
-              Press q to quit
-            </Text>
-          </Box>
-        </Box>
-      );
-    }
+  if (repos.length === 0) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text color="cyan" bold>
+          gitmag
+        </Text>
+        <Text color="gray" dimColor>
+          No repositories found
+        </Text>
+      </Box>
+    );
+  }
 
-    // Show empty state
-    if (repos.length === 0) {
-      return (
-        <Box flexDirection="column" padding={1}>
-          <Text color="cyan" bold>
-            gitmag
-          </Text>
-          <Text color="gray" dimColor>
-            No repositories found
-          </Text>
-        </Box>
-      );
-    }
-
-    return <RepoScreen repos={repos} selectedIdx={selectedIdx} scanProgress={scanProgress} />;
+  // If stack is empty (shouldn't happen), show loading state
+  if (!current) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text color="cyan" bold>
+          gitmag
+        </Text>
+        <Text color="gray" dimColor>
+          Loading repository...
+        </Text>
+      </Box>
+    );
   }
 
   if (current.name === 'commit') {
