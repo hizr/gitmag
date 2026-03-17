@@ -226,4 +226,127 @@ describe('Repository Integration Tests', () => {
 
     await expect(Repository.open(nonGitDir)).rejects.toThrow('Not a git repository');
   });
+
+  describe('getWorkingChanges()', () => {
+    it('returns empty arrays when working directory is clean', async () => {
+      const repo = await Repository.open(repoPath);
+      const changes = await repo.getWorkingChanges();
+
+      expect(changes.staged).toHaveLength(0);
+      expect(changes.unstaged).toHaveLength(0);
+      expect(changes.untracked).toHaveLength(0);
+    });
+
+    it('detects staged files', async () => {
+      const repo = await Repository.open(repoPath);
+
+      // Create and stage a new file
+      fs.writeFileSync(path.join(repoPath, 'new-staged.txt'), 'Staged content\n');
+      execSync('git add new-staged.txt', { cwd: repoPath, stdio: 'pipe' });
+
+      const changes = await repo.getWorkingChanges();
+      expect(changes.staged.length).toBeGreaterThan(0);
+      expect(changes.staged.some((f) => f.path === 'new-staged.txt')).toBe(true);
+
+      // Cleanup
+      execSync('git reset new-staged.txt', { cwd: repoPath, stdio: 'pipe' });
+      fs.unlinkSync(path.join(repoPath, 'new-staged.txt'));
+    });
+
+    it('detects unstaged modifications', async () => {
+      const repo = await Repository.open(repoPath);
+
+      // Modify an existing tracked file without staging
+      const readmePath = path.join(repoPath, 'README.md');
+      fs.writeFileSync(readmePath, '# Test Repo\nDescription here\nUnstaged change\n');
+
+      const changes = await repo.getWorkingChanges();
+      expect(changes.unstaged.length).toBeGreaterThan(0);
+      expect(changes.unstaged.some((f) => f.path === 'README.md' && f.status === 'M')).toBe(true);
+
+      // Cleanup
+      execSync('git checkout README.md', { cwd: repoPath, stdio: 'pipe' });
+    });
+
+    it('detects untracked files', async () => {
+      const repo = await Repository.open(repoPath);
+
+      // Create an untracked file (not added to git)
+      fs.writeFileSync(path.join(repoPath, 'untracked.txt'), 'Untracked content\n');
+
+      const changes = await repo.getWorkingChanges();
+      expect(changes.untracked.length).toBeGreaterThan(0);
+      expect(changes.untracked.some((f) => f.path === 'untracked.txt' && f.status === '??')).toBe(
+        true
+      );
+
+      // Cleanup
+      fs.unlinkSync(path.join(repoPath, 'untracked.txt'));
+    });
+
+    it('correctly categorizes mixed changes', async () => {
+      const repo = await Repository.open(repoPath);
+
+      // Create various types of changes
+      // 1. Staged: new file
+      fs.writeFileSync(path.join(repoPath, 'staged-file.txt'), 'Staged\n');
+      execSync('git add staged-file.txt', { cwd: repoPath, stdio: 'pipe' });
+
+      // 2. Unstaged: modify existing file
+      const readmePath = path.join(repoPath, 'README.md');
+      fs.writeFileSync(readmePath, '# Test Repo\nDescription here\nUnstaged change\n');
+
+      // 3. Untracked: new file not added
+      fs.writeFileSync(path.join(repoPath, 'untracked.txt'), 'Untracked\n');
+
+      const changes = await repo.getWorkingChanges();
+      expect(changes.staged.length).toBeGreaterThan(0);
+      expect(changes.unstaged.length).toBeGreaterThan(0);
+      expect(changes.untracked.length).toBeGreaterThan(0);
+
+      expect(changes.staged.some((f) => f.path === 'staged-file.txt')).toBe(true);
+      expect(changes.unstaged.some((f) => f.path === 'README.md')).toBe(true);
+      expect(changes.untracked.some((f) => f.path === 'untracked.txt' && f.status === '??')).toBe(
+        true
+      );
+
+      // Cleanup
+      execSync('git reset staged-file.txt', { cwd: repoPath, stdio: 'pipe' });
+      fs.unlinkSync(path.join(repoPath, 'staged-file.txt'));
+      execSync('git checkout README.md', { cwd: repoPath, stdio: 'pipe' });
+      fs.unlinkSync(path.join(repoPath, 'untracked.txt'));
+    });
+
+    it('handles files with special characters in paths', async () => {
+      const repo = await Repository.open(repoPath);
+
+      // Create file with space in name
+      const specialPath = path.join(repoPath, 'file with spaces.txt');
+      fs.writeFileSync(specialPath, 'Content\n');
+      execSync('git add "file with spaces.txt"', { cwd: repoPath, stdio: 'pipe' });
+
+      const changes = await repo.getWorkingChanges();
+      expect(changes.staged.some((f) => f.path === 'file with spaces.txt')).toBe(true);
+
+      // Cleanup
+      execSync('git reset "file with spaces.txt"', { cwd: repoPath, stdio: 'pipe' });
+      fs.unlinkSync(specialPath);
+    });
+
+    it('detects staged modifications to existing files', async () => {
+      const repo = await Repository.open(repoPath);
+
+      // Modify and stage an existing file
+      const readmePath = path.join(repoPath, 'README.md');
+      fs.writeFileSync(readmePath, '# Test Repo\nDescription here\nStaged change\n');
+      execSync('git add README.md', { cwd: repoPath, stdio: 'pipe' });
+
+      const changes = await repo.getWorkingChanges();
+      expect(changes.staged.some((f) => f.path === 'README.md' && f.status === 'M')).toBe(true);
+
+      // Cleanup
+      execSync('git reset README.md', { cwd: repoPath, stdio: 'pipe' });
+      execSync('git checkout README.md', { cwd: repoPath, stdio: 'pipe' });
+    });
+  });
 });

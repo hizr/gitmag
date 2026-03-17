@@ -30,6 +30,7 @@ export function App() {
     error: repoError,
     phase,
     repository,
+    workingChanges,
   } = useRepository(process.cwd());
 
   // Derive ScanProgress from useRepository
@@ -160,6 +161,7 @@ export function App() {
           pop();
           setSelectedIdx(0);
         }}
+        workingChanges={workingChanges}
         onOpenDiff={(commit, file) => {
           if (repository) {
             const getDiff = () => repository.getDiff(commit.hash, file.path);

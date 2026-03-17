@@ -1,9 +1,15 @@
-export type FileStatus = 'M' | 'A' | 'D' | 'R';
+export type FileStatus = 'M' | 'A' | 'D' | 'R' | '??';
 
 export interface ChangedFile {
   status: FileStatus;
   path: string;
   diff?: string;
+}
+
+export interface WorkingChanges {
+  staged: ChangedFile[];
+  unstaged: ChangedFile[];
+  untracked: ChangedFile[];
 }
 
 export interface CommitEntry {

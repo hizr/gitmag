@@ -24,6 +24,7 @@ describe('useRepository', () => {
       listCommits: vi.fn().mockResolvedValue([]),
       getChangedFiles: vi.fn().mockResolvedValue([]),
       getRefs: vi.fn().mockResolvedValue(new Map()),
+      getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -57,6 +58,7 @@ describe('useRepository', () => {
       listCommits: vi.fn().mockResolvedValue(mockCommits),
       getChangedFiles: vi.fn().mockResolvedValue([]),
       getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
+      getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -99,6 +101,7 @@ describe('useRepository', () => {
       listCommits: vi.fn().mockResolvedValue([]),
       getChangedFiles: vi.fn().mockResolvedValue([]),
       getRefs: vi.fn().mockResolvedValue(new Map()),
+      getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo
@@ -131,6 +134,7 @@ describe('useRepository', () => {
       listCommits: vi.fn().mockResolvedValue(mockCommits),
       getChangedFiles: vi.fn().mockResolvedValue([]),
       getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
+      getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
     };
     (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
       mockRepo

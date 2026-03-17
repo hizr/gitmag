@@ -1,12 +1,18 @@
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput } from 'ink';
 import clipboard from 'clipboardy';
-import type { RepoEntry, CommitEntry, ChangedFile } from '../data/mockRepos.js';
+import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
 import { buildGraphLines } from '../utils/git-graph.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type FocusPanel = 'graph' | 'files';
+
+type FileLine = {
+  status: string;
+  path: string;
+  isHeader?: boolean;
+};
 
 const FOCUS_ORDER: FocusPanel[] = ['graph', 'files'];
 
@@ -22,6 +28,7 @@ interface CommitScreenProps {
   initialSelectedIdx?: number;
   onBack: () => void;
   onOpenDiff?: (commit: CommitEntry, file: ChangedFile) => void;
+  workingChanges?: WorkingChanges | null;
 }
 
 // ── Panel border helper ───────────────────────────────────────────────────────
@@ -79,17 +86,23 @@ function GraphRow({ prefix, commit, selected, maxWidth }: GraphRowProps) {
   const badgeWidth = badgeText.length;
   const msgWidth = Math.max(maxWidth - prefix.length - HASH_W - metaWidth - badgeWidth - 2, 10);
 
-  const hash = commit.hash.slice(0, 7).padEnd(7);
+  // Use diamond symbol for WORKING node
+  const isWorking = commit.hash === '__WORKING__';
+  const displayHash = isWorking ? 'WORK' : commit.hash.slice(0, 7);
+  const hash = displayHash.padEnd(7);
   const message = commit.message.slice(0, msgWidth).padEnd(msgWidth);
   const author = commit.author.slice(0, 12).padEnd(12);
   const bg = selected ? 'bgBlue' : undefined;
 
+  // Override prefix for WORKING node to show diamond
+  const displayPrefix = isWorking ? prefix.replace('●', '◆') : prefix;
+
   return (
     <Box>
-      <Text color="yellow" backgroundColor={bg ? 'blue' : undefined}>
-        {prefix}
+      <Text color={isWorking ? 'yellow' : 'yellow'} backgroundColor={bg ? 'blue' : undefined}>
+        {displayPrefix}
       </Text>
-      <Text color="green" backgroundColor={bg ? 'blue' : undefined}>
+      <Text color={isWorking ? 'yellow' : 'green'} backgroundColor={bg ? 'blue' : undefined}>
         {hash}{' '}
       </Text>
       <Text
@@ -143,12 +156,42 @@ export function CommitScreen({
   initialSelectedIdx = 0,
   onBack,
   onOpenDiff,
+  workingChanges,
 }: CommitScreenProps) {
   const { stdout } = useStdout();
   const termCols = Math.max(stdout.columns ?? 80, 80);
   const termRows = Math.max(stdout.rows ?? 24, 24);
 
-  const graphLines = buildGraphLines(repo.commits);
+  // ── Create synthetic WORKING node if there are changes ─────────────────
+  const hasChanges =
+    workingChanges &&
+    (workingChanges.staged.length > 0 ||
+      workingChanges.unstaged.length > 0 ||
+      workingChanges.untracked.length > 0);
+
+  const syntheticWorkingCommit: CommitEntry | null = hasChanges
+    ? {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: new Date().toISOString().split('T')[0],
+        author: 'you',
+        body: '',
+        parentHash: repo.commits.length > 0 ? [repo.commits[0].hash] : [],
+        refs: [],
+        changedFiles: [
+          ...workingChanges.staged,
+          ...workingChanges.unstaged,
+          ...workingChanges.untracked,
+        ],
+      }
+    : null;
+
+  // Prepend WORKING node if it exists
+  const commitsWithWorking = syntheticWorkingCommit
+    ? [syntheticWorkingCommit, ...repo.commits]
+    : repo.commits;
+
+  const graphLines = buildGraphLines(commitsWithWorking);
 
   // ── State ────────────────────────────────────────────────────────────
   const [focus, setFocus] = useState<FocusPanel>('graph');
@@ -205,7 +248,36 @@ export function CommitScreen({
   }, [selectedCommit.hash]);
 
   // ── Build file lines (needed before useInput handler) ──────────────────
-  const allFileLines = selectedCommit.changedFiles.map((f) => ({ status: f.status, path: f.path }));
+  const allFileLines: FileLine[] = [];
+
+  if (selectedCommit.hash === '__WORKING__') {
+    // For WORKING node, group files by category
+    const staged = selectedCommit.changedFiles.filter(
+      (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
+    );
+    const unstaged = selectedCommit.changedFiles.filter(
+      (f) => f.status === 'M' || f.status === 'D'
+    );
+    const untracked = selectedCommit.changedFiles.filter((f) => f.status === '??');
+
+    if (staged.length > 0) {
+      allFileLines.push({ status: '📦', path: 'Staged', isHeader: true });
+      allFileLines.push(...staged.map((f) => ({ status: f.status, path: f.path })));
+    }
+    if (unstaged.length > 0) {
+      allFileLines.push({ status: '✎', path: 'Unstaged', isHeader: true });
+      allFileLines.push(...unstaged.map((f) => ({ status: f.status, path: f.path })));
+    }
+    if (untracked.length > 0) {
+      allFileLines.push({ status: '?', path: 'Untracked', isHeader: true });
+      allFileLines.push(...untracked.map((f) => ({ status: f.status, path: f.path })));
+    }
+  } else {
+    // Normal commit: flat list of files
+    allFileLines.push(
+      ...selectedCommit.changedFiles.map((f) => ({ status: f.status, path: f.path }))
+    );
+  }
 
   // ── Keyboard input ────────────────────────────────────────────────────
   useInput((input, key) => {
@@ -240,8 +312,12 @@ export function CommitScreen({
 
     if (key.return && focus === 'files' && onOpenDiff) {
       const selectedFile = allFileLines[selectedFileIdx];
-      if (selectedFile) {
-        onOpenDiff(selectedCommit, selectedFile);
+      if (selectedFile && !selectedFile.isHeader) {
+        // Convert FileLine back to ChangedFile format
+        onOpenDiff(selectedCommit, {
+          status: selectedFile.status as any,
+          path: selectedFile.path,
+        });
       }
       return;
     }
@@ -277,16 +353,38 @@ export function CommitScreen({
   });
 
   // ── Build info lines ─────────────────────────────────────────────────
-  const infoLines: Array<{ label: string; value: string }> = [
-    { label: 'Hash  ', value: selectedCommit.hash },
-    { label: 'Author', value: selectedCommit.author },
-    { label: 'Date  ', value: selectedCommit.date },
-    {
-      label: 'Refs  ',
-      value: selectedCommit.refs.length > 0 ? selectedCommit.refs.join(', ') : '—',
-    },
-  ];
-  const bodyLines = selectedCommit.body ? ['', ...selectedCommit.body.split('\n')] : [];
+  let infoLines: Array<{ label: string; value: string }>;
+  let bodyLines: string[];
+
+  if (selectedCommit.hash === '__WORKING__') {
+    // For WORKING node, show status summary instead of commit metadata
+    const staged = selectedCommit.changedFiles.filter(
+      (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
+    );
+    const unstaged = selectedCommit.changedFiles.filter(
+      (f) => f.status === 'M' || f.status === 'D'
+    );
+    const untracked = selectedCommit.changedFiles.filter((f) => f.status === '??');
+
+    infoLines = [
+      { label: 'Status ', value: 'Working directory changes' },
+      { label: 'Staged ', value: `${staged.length} file(s)` },
+      { label: 'Unstaged', value: `${unstaged.length} file(s)` },
+      { label: 'Untracked', value: `${untracked.length} file(s)` },
+    ];
+    bodyLines = [];
+  } else {
+    infoLines = [
+      { label: 'Hash  ', value: selectedCommit.hash },
+      { label: 'Author', value: selectedCommit.author },
+      { label: 'Date  ', value: selectedCommit.date },
+      {
+        label: 'Refs  ',
+        value: selectedCommit.refs.length > 0 ? selectedCommit.refs.join(', ') : '—',
+      },
+    ];
+    bodyLines = selectedCommit.body ? ['', ...selectedCommit.body.split('\n')] : [];
+  }
 
   // ── Visible slices ────────────────────────────────────────────────────
   const visibleGraph = graphLines.slice(graphScroll, graphScroll + graphInnerH);
@@ -372,6 +470,16 @@ export function CommitScreen({
         >
           {visibleFiles.map((f, i) => {
             const isSelected = filesScroll + i === selectedFileIdx;
+            if (f.isHeader) {
+              // Header row for file category
+              return (
+                <Box key={`file-header-${i}`}>
+                  <Text bold color="cyan">
+                    {f.status} {f.path}
+                  </Text>
+                </Box>
+              );
+            }
             return (
               <Box key={`file-${i}`}>
                 <Text

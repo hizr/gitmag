@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { RepoEntry } from '../data/mockRepos.js';
+import type { RepoEntry, WorkingChanges } from '../data/mockRepos.js';
 import { Repository } from '../data/Repository.js';
 
 export interface RepositoryState {
@@ -8,6 +8,7 @@ export interface RepositoryState {
   error: string | null;
   phase: string;
   repository: Repository | null;
+  workingChanges: WorkingChanges | null;
 }
 
 /**
@@ -22,6 +23,7 @@ export function useRepository(path: string): RepositoryState {
     error: null,
     phase: 'Opening repository…',
     repository: null,
+    workingChanges: null,
   });
 
   useEffect(() => {
@@ -56,6 +58,13 @@ export function useRepository(path: string): RepositoryState {
         }
 
         if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading working changes…' }));
+        }
+
+        // Phase 5: Get working directory changes
+        const workingChanges = await repo.getWorkingChanges();
+
+        if (isMounted) {
           setState({
             repos: [
               {
@@ -67,6 +76,7 @@ export function useRepository(path: string): RepositoryState {
             error: null,
             phase: 'Ready',
             repository: repo,
+            workingChanges,
           });
         }
       } catch (err) {
