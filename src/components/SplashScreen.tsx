@@ -24,8 +24,8 @@ const SCRAMBLE_CHARS = '@#$%!?*^~<>|/\\=+[]{}';
 
 const RAINBOW_COLORS = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta'] as const;
 
-// Resolve times (ms) for each letter — spread evenly across 0–2200ms
-const RESOLVE_TIMES = [200, 600, 1000, 1400, 1800, 2200];
+// Resolve times (ms) for each letter — spread evenly across 0–1000ms
+const RESOLVE_TIMES = [200, 360, 520, 680, 840, 1000];
 
 const ANIM_INTERVAL_MS = 80;
 
@@ -57,7 +57,7 @@ interface SplashScreenProps {
   scanProgress: ScanProgress;
 }
 
-export function SplashScreen({ onComplete, duration = 3000, scanProgress }: SplashScreenProps) {
+export function SplashScreen({ onComplete, duration = 1500, scanProgress }: SplashScreenProps) {
   const { stdout } = useStdout();
   const termCols = stdout.columns ?? 80;
   const termRows = stdout.rows ?? 24;
