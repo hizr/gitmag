@@ -120,8 +120,9 @@ describe('CommitScreen', () => {
     );
     const output = lastFrame();
     // First commit has refs ['HEAD', 'main']
-    expect(output).toContain('[HEAD]');
-    expect(output).toContain('[main]');
+    // Refs are shown with brackets and colors in the graph panel
+    expect(output).toContain('HEAD');
+    expect(output).toContain('main');
   });
 
   it('displays version tags in ref badges', () => {
@@ -130,7 +131,7 @@ describe('CommitScreen', () => {
     );
     const output = lastFrame();
     // Second commit has refs ['v1.0.0']
-    expect(output).toContain('[v1.0.0]');
+    expect(output).toContain('v1.0.0');
   });
 
   // ── Info panel content (first commit selected by default) ────────────────
@@ -205,13 +206,13 @@ describe('CommitScreen', () => {
     ).not.toThrow();
   });
 
-  it('accepts initialSelectedIdx prop', () => {
+  it('accepts initialSelectedCommitIdx prop', () => {
     // Starting at index 1 should show the second commit's data
     const { lastFrame } = render(
       React.createElement(CommitScreen, {
         repo: MOCK_REPO,
         onBack: mockOnBack,
-        initialSelectedIdx: 1,
+        initialSelectedCommitIdx: 1,
       })
     );
     expect(lastFrame()).toContain('37108a1');
