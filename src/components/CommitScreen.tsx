@@ -397,11 +397,6 @@ export function CommitScreen({
 
   // ── Keyboard input ────────────────────────────────────────────────────
   useInput((input, key) => {
-    if (input === 'q') {
-      exit();
-      return;
-    }
-
     // Handle search-specific keys when search is open
     if (searchOpen) {
       if (input === '/') {
@@ -409,11 +404,12 @@ export function CommitScreen({
         setSearchOpen(true);
         return;
       }
-      if (key.escape) {
-        setSearchOpen(false);
-        return;
-      }
       // Let FuzzySearchPopup handle other input via its own useInput
+      return;
+    }
+
+    if (input === 'q') {
+      exit();
       return;
     }
 
