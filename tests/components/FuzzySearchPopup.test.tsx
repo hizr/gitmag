@@ -169,7 +169,7 @@ describe('FuzzySearchPopup', () => {
     expect(output).toContain('3 matches');
   });
 
-  it('calls onSelect when a result is selected', () => {
+  it('calls onSelect when a result is selected', async () => {
     const commits = [createMockCommit({ message: 'fix: auth bug', hash: 'abc1234' })];
     const onSelect = vi.fn();
 
@@ -183,9 +183,15 @@ describe('FuzzySearchPopup', () => {
       />
     );
 
-    // Note: Testing actual keyboard input requires mocking useInput more thoroughly
-    // This is a basic structure test
-    expect(onSelect).not.toHaveBeenCalled();
+    // Use the mocked ink.useInput handler to simulate pressing Return
+    const inkModule: any = await import('ink');
+    const handlers: ((input: string, key: any) => void)[] = inkModule.__useInputHandler || [];
+    const handler = handlers[handlers.length - 1];
+
+    // Simulate user pressing Return to select the currently highlighted commit
+    handler('', { return: true });
+
+    expect(onSelect).toHaveBeenCalledWith(0);
   });
 
   it('calls onClose when escape is pressed', () => {
