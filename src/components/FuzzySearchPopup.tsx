@@ -24,6 +24,7 @@ interface SearchResult {
 interface FuzzySearchPopupProps {
   commits: CommitEntry[];
   onSelect: (commitIdx: number) => void;
+  onHighlight?: (commitIdx: number | null) => void;
   onClose: () => void;
   maxWidth: number;
   maxHeight: number;
@@ -66,6 +67,7 @@ function SearchPanel({ label, width, height, children }: PanelProps) {
 export function FuzzySearchPopup({
   commits,
   onSelect,
+  onHighlight,
   onClose,
   maxWidth,
   maxHeight,
@@ -126,6 +128,20 @@ export function FuzzySearchPopup({
       return Math.min(off, maxScroll);
     });
   }, [query, results.length, innerHeight]);
+
+  // Notify parent when highlighted result changes
+  useEffect(() => {
+    if (onHighlight) {
+      if (results.length === 0) {
+        onHighlight(null);
+      } else {
+        const highlightedResult = results[highlightIdx];
+        if (highlightedResult) {
+          onHighlight(highlightedResult.item.idx);
+        }
+      }
+    }
+  }, [highlightIdx, results.length, results, onHighlight]);
 
   // Handle keyboard input
   useInput((input, key) => {

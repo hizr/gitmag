@@ -291,8 +291,13 @@ export function CommitScreen({
   const [searchOpen, setSearchOpen] = useState(false);
   const [matchIndices, setMatchIndices] = useState<number[]>([]);
   const [activeMatchIdx, setActiveMatchIdx] = useState(-1);
+  const [previewCommitIdx, setPreviewCommitIdx] = useState<number | null>(null);
 
   const selectedCommit: CommitEntry = graphLines[selectedCommitIdx]?.commit ?? repo.commits[0]!;
+
+  // Use preview commit if search is active and user is browsing results, otherwise use selected commit
+  const displayCommitIdx = previewCommitIdx ?? selectedCommitIdx;
+  const displayCommit: CommitEntry = graphLines[displayCommitIdx]?.commit ?? repo.commits[0]!;
 
   // Reset bottom-panel scroll when selection changes, but preserve file selection
   // when returning from diff view (indicated by initialSelectedFileIdx > 0)
@@ -351,15 +356,13 @@ export function CommitScreen({
   // ── Build file lines (needed before useInput handler) ──────────────────
   const allFileLines: FileLine[] = [];
 
-  if (selectedCommit.hash === '__WORKING__') {
+  if (displayCommit.hash === '__WORKING__') {
     // For WORKING node, group files by category
-    const staged = selectedCommit.changedFiles.filter(
+    const staged = displayCommit.changedFiles.filter(
       (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
     );
-    const unstaged = selectedCommit.changedFiles.filter(
-      (f) => f.status === 'M' || f.status === 'D'
-    );
-    const untracked = selectedCommit.changedFiles.filter((f) => f.status === '??');
+    const unstaged = displayCommit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
+    const untracked = displayCommit.changedFiles.filter((f) => f.status === '??');
 
     if (staged.length > 0) {
       allFileLines.push({ status: '📦', path: 'Staged', isHeader: true });
@@ -376,7 +379,7 @@ export function CommitScreen({
   } else {
     // Normal commit: flat list of files
     allFileLines.push(
-      ...selectedCommit.changedFiles.map((f) => ({ status: f.status, path: f.path }))
+      ...displayCommit.changedFiles.map((f) => ({ status: f.status, path: f.path }))
     );
   }
 
@@ -511,15 +514,13 @@ export function CommitScreen({
   let infoLines: Array<{ label: string; value: string }>;
   let bodyLines: string[];
 
-  if (selectedCommit.hash === '__WORKING__') {
+  if (displayCommit.hash === '__WORKING__') {
     // For WORKING node, show status summary instead of commit metadata
-    const staged = selectedCommit.changedFiles.filter(
+    const staged = displayCommit.changedFiles.filter(
       (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
     );
-    const unstaged = selectedCommit.changedFiles.filter(
-      (f) => f.status === 'M' || f.status === 'D'
-    );
-    const untracked = selectedCommit.changedFiles.filter((f) => f.status === '??');
+    const unstaged = displayCommit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
+    const untracked = displayCommit.changedFiles.filter((f) => f.status === '??');
 
     infoLines = [
       { label: 'Status ', value: 'Working directory changes' },
@@ -530,15 +531,15 @@ export function CommitScreen({
     bodyLines = [];
   } else {
     infoLines = [
-      { label: 'Hash  ', value: selectedCommit.hash },
-      { label: 'Author', value: selectedCommit.author },
-      { label: 'Date  ', value: selectedCommit.date },
+      { label: 'Hash  ', value: displayCommit.hash },
+      { label: 'Author', value: displayCommit.author },
+      { label: 'Date  ', value: displayCommit.date },
       {
         label: 'Refs  ',
-        value: selectedCommit.refs.length > 0 ? selectedCommit.refs.join(', ') : '—',
+        value: displayCommit.refs.length > 0 ? displayCommit.refs.join(', ') : '—',
       },
     ];
-    bodyLines = selectedCommit.body ? ['', ...selectedCommit.body.split('\n')] : [];
+    bodyLines = displayCommit.body ? ['', ...displayCommit.body.split('\n')] : [];
   }
 
   // ── Visible slices ────────────────────────────────────────────────────
@@ -589,6 +590,9 @@ export function CommitScreen({
                 const next = commitIdx;
                 return next >= p + graphInnerH ? next - graphInnerH + 1 : next < p ? next : p;
               });
+            }}
+            onHighlight={(commitIdx) => {
+              setPreviewCommitIdx(commitIdx);
             }}
             onClose={() => setSearchOpen(false)}
             maxWidth={termCols - 2}

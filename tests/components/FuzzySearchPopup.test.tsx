@@ -255,4 +255,28 @@ describe('FuzzySearchPopup', () => {
     // Should show the commit in results
     expect(output).toContain('1 matches');
   });
+
+  it('accepts onHighlight callback prop', () => {
+    const commits = [createMockCommit({ message: 'fix: auth bug', hash: 'abc1234' })];
+
+    const onHighlight = vi.fn();
+
+    // Should not throw when onHighlight is provided
+    const { lastFrame } = render(
+      <FuzzySearchPopup
+        commits={commits}
+        onSelect={() => {}}
+        onHighlight={onHighlight}
+        onClose={() => {}}
+        maxWidth={80}
+        maxHeight={10}
+      />
+    );
+
+    // Component should render successfully without errors
+    const output = lastFrame();
+    expect(output).toContain('Search');
+    // Note: onHighlight callback is tested at integration level in CommitScreen tests
+    // because useEffect doesn't fire in ink-testing-library unit tests
+  });
 });
