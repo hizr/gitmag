@@ -9,6 +9,7 @@ import type {
   BranchInfo,
 } from '../data/mockRepos.js';
 import { buildGraphLines } from '../utils/git-graph.js';
+import { FuzzySearchPopup } from './FuzzySearchPopup.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -80,9 +81,18 @@ interface GraphRowProps {
   commit: CommitEntry;
   selected: boolean;
   maxWidth: number;
+  isMatchedResult?: boolean;
+  isActiveMatch?: boolean;
 }
 
-function GraphRow({ prefix, commit, selected, maxWidth }: GraphRowProps) {
+function GraphRow({
+  prefix,
+  commit,
+  selected,
+  maxWidth,
+  isMatchedResult,
+  isActiveMatch,
+}: GraphRowProps) {
   const HASH_W = 8; // 7 chars + 1 space
   const metaWidth = 22; // date (10) + gap (2) + author (truncated to 10)
 
@@ -99,24 +109,25 @@ function GraphRow({ prefix, commit, selected, maxWidth }: GraphRowProps) {
   const hash = displayHash.padEnd(7);
   const message = commit.message.slice(0, msgWidth).padEnd(msgWidth);
   const author = commit.author.slice(0, 12).padEnd(12);
-  const bg = selected ? 'bgBlue' : undefined;
+  const bg = selected ? 'bgBlue' : isActiveMatch ? 'bgGreen' : undefined;
+  const matchMarker = isMatchedResult ? (isActiveMatch ? '●' : '○') : ' ';
 
   // Override prefix for WORKING node to show diamond
   const displayPrefix = isWorking ? prefix.replace('●', '◆') : prefix;
 
+  // Compute background color once
+  const bgColor = bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined;
+
   return (
     <Box>
-      <Text color={isWorking ? 'yellow' : 'yellow'} backgroundColor={bg ? 'blue' : undefined}>
+      <Text color="yellow" backgroundColor={bgColor}>
         {displayPrefix}
       </Text>
-      <Text color={isWorking ? 'yellow' : 'green'} backgroundColor={bg ? 'blue' : undefined}>
+      <Text color="yellow" backgroundColor={bgColor}>
+        {matchMarker}
         {hash}{' '}
       </Text>
-      <Text
-        bold={selected}
-        backgroundColor={bg ? 'blue' : undefined}
-        color={selected ? 'white' : undefined}
-      >
+      <Text bold={selected} backgroundColor={bgColor} color={selected ? 'white' : undefined}>
         {message}
       </Text>
       {/* Render ref badges with color-coding */}
@@ -132,23 +143,18 @@ function GraphRow({ prefix, commit, selected, maxWidth }: GraphRowProps) {
           color = 'green';
         }
         return (
-          <Text
-            key={idx}
-            color={color}
-            bold={ref === 'HEAD'}
-            backgroundColor={bg ? 'blue' : undefined}
-          >
+          <Text key={idx} color={color} bold={ref === 'HEAD'} backgroundColor={bgColor}>
             {' ['}
             {ref}
             {']'}
           </Text>
         );
       })}
-      <Text color="magenta" backgroundColor={bg ? 'blue' : undefined}>
+      <Text color="magenta" backgroundColor={bgColor}>
         {' '}
         {author}
       </Text>
-      <Text color="gray" backgroundColor={bg ? 'blue' : undefined}>
+      <Text color="gray" backgroundColor={bgColor}>
         {' '}
         {commit.date}
       </Text>
@@ -281,7 +287,17 @@ export function CommitScreen({
   const [filesScroll, setFilesScroll] = useState(0);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
+  // Search state
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [matchIndices, setMatchIndices] = useState<number[]>([]);
+  const [activeMatchIdx, setActiveMatchIdx] = useState(-1);
+  const [previewCommitIdx, setPreviewCommitIdx] = useState<number | null>(null);
+
   const selectedCommit: CommitEntry = graphLines[selectedCommitIdx]?.commit ?? repo.commits[0]!;
+
+  // Use preview commit if search is active and user is browsing results, otherwise use selected commit
+  const displayCommitIdx = previewCommitIdx ?? selectedCommitIdx;
+  const displayCommit: CommitEntry = graphLines[displayCommitIdx]?.commit ?? repo.commits[0]!;
 
   // Reset bottom-panel scroll when selection changes, but preserve file selection
   // when returning from diff view (indicated by initialSelectedFileIdx > 0)
@@ -340,15 +356,13 @@ export function CommitScreen({
   // ── Build file lines (needed before useInput handler) ──────────────────
   const allFileLines: FileLine[] = [];
 
-  if (selectedCommit.hash === '__WORKING__') {
+  if (displayCommit.hash === '__WORKING__') {
     // For WORKING node, group files by category
-    const staged = selectedCommit.changedFiles.filter(
+    const staged = displayCommit.changedFiles.filter(
       (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
     );
-    const unstaged = selectedCommit.changedFiles.filter(
-      (f) => f.status === 'M' || f.status === 'D'
-    );
-    const untracked = selectedCommit.changedFiles.filter((f) => f.status === '??');
+    const unstaged = displayCommit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
+    const untracked = displayCommit.changedFiles.filter((f) => f.status === '??');
 
     if (staged.length > 0) {
       allFileLines.push({ status: '📦', path: 'Staged', isHeader: true });
@@ -365,14 +379,63 @@ export function CommitScreen({
   } else {
     // Normal commit: flat list of files
     allFileLines.push(
-      ...selectedCommit.changedFiles.map((f) => ({ status: f.status, path: f.path }))
+      ...displayCommit.changedFiles.map((f) => ({ status: f.status, path: f.path }))
     );
   }
 
   // ── Keyboard input ────────────────────────────────────────────────────
   useInput((input, key) => {
+    // Handle search-specific keys when search is open
+    if (searchOpen) {
+      // Let FuzzySearchPopup handle all input via its own useInput
+      return;
+    }
+
     if (input === 'q') {
       exit();
+      return;
+    }
+
+    // Handle n/m navigation when matches exist
+    if (input === 'n' && matchIndices.length > 0) {
+      const nextIdx = (activeMatchIdx + 1) % matchIndices.length;
+      setActiveMatchIdx(nextIdx);
+      const newCommitIdx = matchIndices[nextIdx]!;
+      setSelectedCommitIdx(newCommitIdx);
+      // Adjust scroll
+      setGraphScroll((p) => {
+        const next = newCommitIdx;
+        return next >= p + graphInnerH ? next - graphInnerH + 1 : next < p ? next : p;
+      });
+      return;
+    }
+
+    if (input === 'm' && matchIndices.length > 0) {
+      const nextIdx =
+        activeMatchIdx === -1
+          ? matchIndices.length - 1
+          : (activeMatchIdx - 1 + matchIndices.length) % matchIndices.length;
+      setActiveMatchIdx(nextIdx);
+      const newCommitIdx = matchIndices[nextIdx]!;
+      setSelectedCommitIdx(newCommitIdx);
+      // Adjust scroll
+      setGraphScroll((p) => {
+        const next = newCommitIdx;
+        return next >= p + graphInnerH ? next - graphInnerH + 1 : next < p ? next : p;
+      });
+      return;
+    }
+
+    // Clear matches when pressing escape
+    if (key.escape && matchIndices.length > 0) {
+      setMatchIndices([]);
+      setActiveMatchIdx(-1);
+      return;
+    }
+
+    // Open search on /
+    if (input === '/') {
+      setSearchOpen(true);
       return;
     }
 
@@ -448,18 +511,16 @@ export function CommitScreen({
   });
 
   // ── Build info lines ─────────────────────────────────────────────────
-  let infoLines: Array<{ label: string; value: string }>;
+  let infoLines: Array<{ label: string; value: string; wrap?: boolean }>;
   let bodyLines: string[];
 
-  if (selectedCommit.hash === '__WORKING__') {
+  if (displayCommit.hash === '__WORKING__') {
     // For WORKING node, show status summary instead of commit metadata
-    const staged = selectedCommit.changedFiles.filter(
+    const staged = displayCommit.changedFiles.filter(
       (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
     );
-    const unstaged = selectedCommit.changedFiles.filter(
-      (f) => f.status === 'M' || f.status === 'D'
-    );
-    const untracked = selectedCommit.changedFiles.filter((f) => f.status === '??');
+    const unstaged = displayCommit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
+    const untracked = displayCommit.changedFiles.filter((f) => f.status === '??');
 
     infoLines = [
       { label: 'Status ', value: 'Working directory changes' },
@@ -470,15 +531,16 @@ export function CommitScreen({
     bodyLines = [];
   } else {
     infoLines = [
-      { label: 'Hash  ', value: selectedCommit.hash },
-      { label: 'Author', value: selectedCommit.author },
-      { label: 'Date  ', value: selectedCommit.date },
+      { label: 'Hash  ', value: displayCommit.hash },
+      { label: 'Author', value: displayCommit.author },
+      { label: 'Date  ', value: displayCommit.date },
       {
         label: 'Refs  ',
-        value: selectedCommit.refs.length > 0 ? selectedCommit.refs.join(', ') : '—',
+        value: displayCommit.refs.length > 0 ? displayCommit.refs.join(', ') : '—',
       },
+      { label: 'Message', value: displayCommit.message, wrap: true },
     ];
-    bodyLines = selectedCommit.body ? ['', ...selectedCommit.body.split('\n')] : [];
+    bodyLines = displayCommit.body ? ['', ...displayCommit.body.split('\n')] : [];
   }
 
   // ── Visible slices ────────────────────────────────────────────────────
@@ -513,26 +575,61 @@ export function CommitScreen({
       </Box>
 
       {/* ── Graph panel ──────────────────────────────────────────────── */}
-      <Panel
-        label="Git Graph"
-        focused={focus === 'graph'}
-        width={termCols - 2}
-        height={graphHeight}
-      >
-        {visibleGraph.map((line, i) => (
-          <GraphRow
-            key={line.commit.hash}
-            prefix={line.prefix}
-            commit={line.commit}
-            selected={graphScroll + i === selectedCommitIdx}
-            maxWidth={termCols - 4}
+      {searchOpen ? (
+        <Box marginTop={0}>
+          <FuzzySearchPopup
+            commits={commitsWithWorking}
+            onSelect={(commitIdx) => {
+              setSelectedCommitIdx(commitIdx);
+              setSearchOpen(false);
+              // Store the matched indices for n/m navigation
+              // For now, we'll populate matches on next search
+              setMatchIndices([commitIdx]);
+              setActiveMatchIdx(0);
+              // Adjust scroll to show selected commit
+              setGraphScroll((p) => {
+                const next = commitIdx;
+                return next >= p + graphInnerH ? next - graphInnerH + 1 : next < p ? next : p;
+              });
+            }}
+            onHighlight={(commitIdx) => {
+              setPreviewCommitIdx(commitIdx);
+            }}
+            onClose={() => setSearchOpen(false)}
+            maxWidth={termCols - 2}
+            maxHeight={graphHeight}
           />
-        ))}
-        {/* Empty rows to fill panel height */}
-        {Array.from({ length: Math.max(graphInnerH - visibleGraph.length, 0) }).map((_, i) => (
-          <Text key={`empty-graph-${i}`}> </Text>
-        ))}
-      </Panel>
+        </Box>
+      ) : (
+        <Panel
+          label="Git Graph"
+          focused={focus === 'graph'}
+          width={termCols - 2}
+          height={graphHeight}
+        >
+          {visibleGraph.map((line, i) => {
+            const globalIdx = graphScroll + i;
+            const isMatchedResult = matchIndices.includes(globalIdx);
+            const isActiveMatch =
+              globalIdx === (activeMatchIdx >= 0 ? matchIndices[activeMatchIdx] : -1);
+            return (
+              <GraphRow
+                key={line.commit.hash}
+                prefix={line.prefix}
+                commit={line.commit}
+                selected={globalIdx === selectedCommitIdx}
+                maxWidth={termCols - 4}
+                isMatchedResult={isMatchedResult}
+                isActiveMatch={isActiveMatch}
+              />
+            );
+          })}
+          {/* Empty rows to fill panel height */}
+          {Array.from({ length: Math.max(graphInnerH - visibleGraph.length, 0) }).map((_, i) => (
+            <Text key={`empty-graph-${i}`}> </Text>
+          ))}
+        </Panel>
+      )}
 
       {/* ── Bottom panels ────────────────────────────────────────────── */}
       <Box flexDirection="row" gap={1} marginTop={0}>
@@ -542,6 +639,23 @@ export function CommitScreen({
             const isHeader = i + infoScroll < infoLines.length;
             if (isHeader) {
               const entry = infoLines[i + infoScroll]!;
+              // For wrappable fields like Message, use a separate layout
+              if (entry.wrap) {
+                const labelWidth = entry.label.length;
+                const availableWidth = Math.max(leftWidth - labelWidth - 5, 20); // 5 = borders + spacing
+                return (
+                  <Box key={`info-${i}`} flexDirection="column">
+                    <Box marginBottom={0}>
+                      <Text color="cyan">{entry.label}</Text>
+                      <Text color="gray"> </Text>
+                      <Box width={availableWidth} flexDirection="column">
+                        <Text wrap="wrap">{entry.value}</Text>
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              }
+              // Standard single-line layout
               return (
                 <Box key={`info-${i}`}>
                   <Text color="cyan">{entry.label}</Text>
@@ -620,9 +734,14 @@ export function CommitScreen({
           <Text color="green" bold>
             {copyStatus}
           </Text>
+        ) : matchIndices.length > 0 ? (
+          <Text color="gray" dimColor>
+            [n/m] next/prev match ({matchIndices.length} results) [/] new search [ESC] clear [j/k]
+            navigate [q] quit
+          </Text>
         ) : (
           <Text color="gray" dimColor>
-            [j/k] navigate [enter] select/diff [c] copy SHA [bksp] back [q] quit
+            [/] search [j/k] navigate [enter] select/diff [c] copy SHA [bksp] back [q] quit
           </Text>
         )}
       </Box>
