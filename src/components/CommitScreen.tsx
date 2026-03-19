@@ -115,26 +115,19 @@ function GraphRow({
   // Override prefix for WORKING node to show diamond
   const displayPrefix = isWorking ? prefix.replace('●', '◆') : prefix;
 
+  // Compute background color once
+  const bgColor = bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined;
+
   return (
     <Box>
-      <Text
-        color={isMatchedResult ? 'yellow' : isWorking ? 'yellow' : 'yellow'}
-        backgroundColor={bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined}
-      >
+      <Text color="yellow" backgroundColor={bgColor}>
         {displayPrefix}
       </Text>
-      <Text
-        color={isMatchedResult ? 'yellow' : isWorking ? 'yellow' : 'green'}
-        backgroundColor={bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined}
-      >
+      <Text color="yellow" backgroundColor={bgColor}>
         {matchMarker}
         {hash}{' '}
       </Text>
-      <Text
-        bold={selected}
-        backgroundColor={bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined}
-        color={selected ? 'white' : undefined}
-      >
+      <Text bold={selected} backgroundColor={bgColor} color={selected ? 'white' : undefined}>
         {message}
       </Text>
       {/* Render ref badges with color-coding */}
@@ -150,26 +143,18 @@ function GraphRow({
           color = 'green';
         }
         return (
-          <Text
-            key={idx}
-            color={color}
-            bold={ref === 'HEAD'}
-            backgroundColor={bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined}
-          >
+          <Text key={idx} color={color} bold={ref === 'HEAD'} backgroundColor={bgColor}>
             {' ['}
             {ref}
             {']'}
           </Text>
         );
       })}
-      <Text
-        color="magenta"
-        backgroundColor={bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined}
-      >
+      <Text color="magenta" backgroundColor={bgColor}>
         {' '}
         {author}
       </Text>
-      <Text color="gray" backgroundColor={bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined}>
+      <Text color="gray" backgroundColor={bgColor}>
         {' '}
         {commit.date}
       </Text>
