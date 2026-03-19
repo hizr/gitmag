@@ -511,7 +511,7 @@ export function CommitScreen({
   });
 
   // ── Build info lines ─────────────────────────────────────────────────
-  let infoLines: Array<{ label: string; value: string }>;
+  let infoLines: Array<{ label: string; value: string; wrap?: boolean }>;
   let bodyLines: string[];
 
   if (displayCommit.hash === '__WORKING__') {
@@ -538,6 +538,7 @@ export function CommitScreen({
         label: 'Refs  ',
         value: displayCommit.refs.length > 0 ? displayCommit.refs.join(', ') : '—',
       },
+      { label: 'Message', value: displayCommit.message, wrap: true },
     ];
     bodyLines = displayCommit.body ? ['', ...displayCommit.body.split('\n')] : [];
   }
@@ -638,6 +639,23 @@ export function CommitScreen({
             const isHeader = i + infoScroll < infoLines.length;
             if (isHeader) {
               const entry = infoLines[i + infoScroll]!;
+              // For wrappable fields like Message, use a separate layout
+              if (entry.wrap) {
+                const labelWidth = entry.label.length;
+                const availableWidth = Math.max(leftWidth - labelWidth - 5, 20); // 5 = borders + spacing
+                return (
+                  <Box key={`info-${i}`} flexDirection="column">
+                    <Box marginBottom={0}>
+                      <Text color="cyan">{entry.label}</Text>
+                      <Text color="gray"> </Text>
+                      <Box width={availableWidth} flexDirection="column">
+                        <Text wrap="wrap">{entry.value}</Text>
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              }
+              // Standard single-line layout
               return (
                 <Box key={`info-${i}`}>
                   <Text color="cyan">{entry.label}</Text>
