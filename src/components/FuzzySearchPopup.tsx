@@ -191,7 +191,9 @@ export function FuzzySearchPopup({
     }
   });
 
-  const panelWidth = Math.max(maxWidth - 2, 40);
+  // Width is maxWidth - 2 for padding, with minimum 20 chars for usability
+  // but never exceeding the available maxWidth
+  const panelWidth = Math.min(Math.max(maxWidth - 2, 20), maxWidth);
   const panelHeight = maxHeight;
 
   return (
