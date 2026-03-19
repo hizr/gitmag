@@ -149,19 +149,27 @@ export function FuzzySearchPopup({
 
     // Navigation within results
     if (key.upArrow || input === 'k') {
-      setHighlightIdx((idx) => Math.max(idx - 1, 0));
-      if (highlightIdx > 0 && highlightIdx - 1 < scrollOffset) {
-        setScrollOffset((off) => Math.max(off - 1, 0));
-      }
+      setHighlightIdx((idx) => {
+        const nextIdx = Math.max(idx - 1, 0);
+        // Adjust scroll if next highlight goes above visible window
+        if (nextIdx < scrollOffset) {
+          setScrollOffset((off) => Math.max(off - 1, 0));
+        }
+        return nextIdx;
+      });
       return;
     }
 
     if (key.downArrow || input === 'j') {
       const maxIdx = Math.max(results.length - 1, 0);
-      setHighlightIdx((idx) => Math.min(idx + 1, maxIdx));
-      if (highlightIdx < results.length - 1 && highlightIdx + 1 >= scrollOffset + innerHeight) {
-        setScrollOffset((off) => off + 1);
-      }
+      setHighlightIdx((idx) => {
+        const nextIdx = Math.min(idx + 1, maxIdx);
+        // Adjust scroll if next highlight goes below visible window
+        if (nextIdx >= scrollOffset + innerHeight) {
+          setScrollOffset((off) => off + 1);
+        }
+        return nextIdx;
+      });
       return;
     }
 
