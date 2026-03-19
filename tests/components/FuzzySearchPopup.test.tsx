@@ -53,6 +53,79 @@ describe('FuzzySearchPopup', () => {
     expect(output).toContain('2 matches');
   });
 
+  it('calls onSelect when Enter is pressed after typing search text', async () => {
+    const commits = [
+      createMockCommit({ message: 'fix: auth bug', hash: 'abc1234' }),
+      createMockCommit({ message: 'feat: add login', hash: 'def5678' }),
+    ];
+
+    const onSelect = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <FuzzySearchPopup
+        commits={commits}
+        onSelect={onSelect}
+        onClose={onClose}
+        maxWidth={80}
+        maxHeight={10}
+      />
+    );
+
+    const ink = await import('ink');
+    const handlers = (ink as any).__useInputHandler as ((input: string, key: any) => void)[];
+
+    expect(Array.isArray(handlers)).toBe(true);
+    expect(handlers.length).toBeGreaterThan(0);
+
+    const handler = handlers[handlers.length - 1];
+
+    // Simulate typing part of the commit message and then pressing Enter.
+    for (const ch of 'fix') {
+      handler(ch, { return: false, escape: false });
+    }
+
+    handler('', { return: true, escape: false });
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledWith(commits[0]);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('calls onClose when Escape is pressed', async () => {
+    const commits = [
+      createMockCommit({ message: 'fix: auth bug', hash: 'abc1234' }),
+      createMockCommit({ message: 'feat: add login', hash: 'def5678' }),
+    ];
+
+    const onSelect = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <FuzzySearchPopup
+        commits={commits}
+        onSelect={onSelect}
+        onClose={onClose}
+        maxWidth={80}
+        maxHeight={10}
+      />
+    );
+
+    const ink = await import('ink');
+    const handlers = (ink as any).__useInputHandler as ((input: string, key: any) => void)[];
+
+    expect(Array.isArray(handlers)).toBe(true);
+    expect(handlers.length).toBeGreaterThan(0);
+
+    const handler = handlers[handlers.length - 1];
+
+    // Simulate pressing Escape to close the popup.
+    handler('', { return: false, escape: true });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it('shows all commits when search is empty', () => {
     const commits = [
       createMockCommit({ message: 'fix: auth bug', hash: 'abc1234' }),
