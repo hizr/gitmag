@@ -117,11 +117,15 @@ export function FuzzySearchPopup({
   const innerHeight = Math.max(maxHeight - 4, 1); // Account for input line + borders
   const visibleResults = results.slice(scrollOffset, scrollOffset + innerHeight);
 
-  // Reset highlight when results change
+  // Reset highlight when results change, clamp scrollOffset to valid range
   useEffect(() => {
     setHighlightIdx(0);
-    setScrollOffset(0);
-  }, [query]);
+    // Ensure scrollOffset is clamped to valid range for new result set
+    setScrollOffset((off) => {
+      const maxScroll = Math.max(results.length - innerHeight, 0);
+      return Math.min(off, maxScroll);
+    });
+  }, [query, results.length, innerHeight]);
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -166,14 +170,17 @@ export function FuzzySearchPopup({
         const nextIdx = Math.min(idx + 1, maxIdx);
         // Adjust scroll if next highlight goes below visible window
         if (nextIdx >= scrollOffset + innerHeight) {
-          setScrollOffset((off) => off + 1);
+          setScrollOffset((off) => {
+            const maxScroll = Math.max(results.length - innerHeight, 0);
+            return Math.min(off + 1, maxScroll);
+          });
         }
         return nextIdx;
       });
       return;
     }
 
-    // Select result and close
+    // Select result (parent closes popup via onSelect callback)
     if (key.return) {
       if (results.length > 0) {
         const selectedResult = results[highlightIdx];
@@ -254,7 +261,7 @@ export function FuzzySearchPopup({
       {/* Result counter */}
       <Box marginTop={0}>
         <Text color="gray" dimColor>
-          [{highlightIdx + 1}/{results.length}]
+          [{results.length === 0 ? 0 : highlightIdx + 1}/{results.length}]
         </Text>
       </Box>
     </SearchPanel>

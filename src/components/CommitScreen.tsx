@@ -384,12 +384,7 @@ export function CommitScreen({
   useInput((input, key) => {
     // Handle search-specific keys when search is open
     if (searchOpen) {
-      if (input === '/') {
-        // Clear and restart search
-        setSearchOpen(true);
-        return;
-      }
-      // Let FuzzySearchPopup handle other input via its own useInput
+      // Let FuzzySearchPopup handle all input via its own useInput
       return;
     }
 
