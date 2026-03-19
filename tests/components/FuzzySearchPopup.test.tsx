@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from 'ink-testing-library';
+import { __useInputHandler } from 'ink';
 import { FuzzySearchPopup } from '../../src/components/FuzzySearchPopup.js';
 import type { CommitEntry } from '../../src/data/mockRepos.js';
 
@@ -208,8 +209,14 @@ describe('FuzzySearchPopup', () => {
       />
     );
 
-    // Note: Testing actual keyboard input requires mocking useInput more thoroughly
+    // Before simulating input, onClose should not have been called
     expect(onClose).not.toHaveBeenCalled();
+
+    // Simulate pressing the Escape key via the captured useInput handler
+    const handler = (__useInputHandler as ((input: string, key: any) => void)[])[0];
+    handler('', { escape: true });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('displays commit hash and message in results', () => {
