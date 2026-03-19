@@ -2,11 +2,11 @@
 
 [![CI](https://github.com/hizr/gitmag/actions/workflows/ci.yml/badge.svg)](https://github.com/hizr/gitmag/actions/workflows/ci.yml)
 
-A terminal-based Git repository explorer that displays repository information and commit history with an animated splash screen. Powered by live git data integration—explore real commits, file changes, and diffs directly from your repository.
+A lightweight TUI application inspired by gitk, offering a streamlined experience for exploring git repositories directly from your terminal. Powered by live git data integration—explore real commits, file changes, and diffs with keyboard-driven navigation and a beautiful animated interface.
 
 ## Summary
 
-Git Magazine is a CLI tool that reads real git repositories and presents them in an interactive terminal interface. Navigate through your repos, explore commit history, view file changes, and inspect diffs—all within a beautiful, animated terminal UI built with React and Ink. Powered by `simple-git` for live repository access.
+Git Magazine is a lightweight TUI application inspired by gitk, delivering a streamlined experience for exploring git repositories in the terminal. Built with React and Ink, it reads real git repositories and presents them in an interactive, keyboard-driven interface. Navigate through your repos, explore commit history, view file changes, and inspect diffs—all with a beautiful animated terminal UI and live git integration via `simple-git`.
 
 ## Features
 
