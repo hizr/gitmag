@@ -13,7 +13,8 @@ Git Magazine is a lightweight TUI application inspired by gitk, delivering a str
 - **Animated splash screen** with a scrambling/revealing "gitmag" title
 - **Live git integration** — reads real commits, branches, and file changes from your repository
 - **Interactive repository browser** with keyboard navigation (up/down, enter to select)
-- **Commit explorer** showing commit history, authors, dates, and file changes
+- **Commit explorer** showing commit history, authors, dates, refs, messages, and file changes
+- **Fuzzy search** with live preview — navigate search results and preview commits in real time
 - **Unified diff viewer** with color-coded changes, line numbers (toggleable), and scrolling
 - **Branch detection** — automatically resolves which branch each commit belongs to
 - **Performance optimized** — commit list caching for faster navigation in large repos
@@ -51,15 +52,20 @@ node dist/index.js
 
 ## Keyboard Controls
 
-| Key                | Screen         | Action                      |
-| ------------------ | -------------- | --------------------------- |
-| `j` / Down Arrow   | All            | Move down                   |
-| `k` / Up Arrow     | All            | Move up                     |
-| Enter              | RepoScreen     | Select repository           |
-| Enter              | CommitScreen   | View diff for selected file |
-| `l`                | FileDiffScreen | Toggle line numbers         |
-| Backspace / Delete | All            | Go back                     |
-| `q`                | All            | Quit application            |
+| Key                | Screen         | Action                        |
+| ------------------ | -------------- | ----------------------------- |
+| `j` / Down Arrow   | All            | Move down                     |
+| `k` / Up Arrow     | All            | Move up                       |
+| Tab                | CommitScreen   | Cycle focus (graph → files)   |
+| Enter              | RepoScreen     | Select repository             |
+| Enter              | CommitScreen   | View diff for selected file   |
+| `/`                | CommitScreen   | Open fuzzy search             |
+| `ESC`              | CommitScreen   | Close search or clear matches |
+| `n` / `m`          | CommitScreen   | Next/previous search match    |
+| `l`                | FileDiffScreen | Toggle line numbers           |
+| `c`                | CommitScreen   | Copy commit SHA to clipboard  |
+| Backspace / Delete | All            | Go back                       |
+| `q`                | All            | Quit application              |
 
 ## Development
 
@@ -126,14 +132,14 @@ tests/
 
 ## Test Coverage
 
-The project includes **11 test files** with **95 passing tests** across all layers:
+The project includes **10 test files** with **110 passing tests** across all layers:
 
-| Category          | Count          | Details                                                                      |
-| ----------------- | -------------- | ---------------------------------------------------------------------------- |
-| Unit Tests        | 80+            | Repository, hooks, utilities                                                 |
-| Integration Tests | 15             | Real temporary git repos (add/modify/delete files, diffs, branch resolution) |
-| Component Tests   | 5+             | RepoScreen, CommitScreen, FileDiffScreen                                     |
-| **Total**         | **95 passing** | 1 test skipped (non-critical)                                                |
+| Category          | Count           | Details                                                                      |
+| ----------------- | --------------- | ---------------------------------------------------------------------------- |
+| Unit Tests        | 85+             | Repository, hooks, utilities, fuzzy search                                   |
+| Integration Tests | 15              | Real temporary git repos (add/modify/delete files, diffs, branch resolution) |
+| Component Tests   | 10+             | RepoScreen, CommitScreen, FileDiffScreen, FuzzySearchPopup                   |
+| **Total**         | **110 passing** | 1 test skipped (non-critical)                                                |
 
 All tests run automatically on every commit via GitHub Actions CI pipeline.
 
