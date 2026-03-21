@@ -270,16 +270,19 @@ export class Repository {
 
   /**
    * Fetch branch information: current branch, remote tracking branch,
-   * ahead/behind counts, HEAD author, and repo path.
-   * @param headCommitAuthor Author of the HEAD commit (from commits array)
+   * ahead/behind counts, and repo path.
+   *
+   * Note: headAuthor is intentionally left as an empty string here. The caller
+   * (useRepository) derives it from the commits array after all concurrent
+   * data-fetching arms complete and sets it on the returned object.
    */
-  async getBranchInfo(headCommitAuthor: string): Promise<BranchInfo> {
+  async getBranchInfo(): Promise<BranchInfo> {
     const result: BranchInfo = {
       currentBranch: '(unknown)',
       remoteBranch: null,
       ahead: 0,
       behind: 0,
-      headAuthor: headCommitAuthor,
+      headAuthor: '',
       repoPath: this.basePath,
     };
 
