@@ -8,7 +8,7 @@
   "scripts": {
     "prepare": "husky",
     "dev": "tsx src/index.ts",
-    "build": "tsc",
+    "build": "tsup src/index.ts --format esm --platform node --out-dir dist --no-splitting --dts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -50,6 +50,7 @@
     "prettier": "^3.8.1",
     "react-dom": "^18.3.1",
     "tsx": "^4.21.0",
+    "tsup": "^8.4.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }

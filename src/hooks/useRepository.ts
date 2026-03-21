@@ -14,6 +14,13 @@ export interface RepositoryState {
 /**
  * Hook to load a repository from the given path.
  * Returns loading/error states and a single-element repo array on success.
+ *
+ * Loading strategy:
+ *   Phase 1 (sequential): open repo — required before anything else.
+ *   Phase 2 (parallel):   listCommits → getChangedFiles[] run concurrently with
+ *                         getRefs, getWorkingChanges, and getBranchInfo.
+ *                         All four arms start at the same time.
+ *
  * @param path Path to the git repository (e.g., process.cwd())
  */
 export function useRepository(path: string): RepositoryState {
@@ -31,46 +38,46 @@ export function useRepository(path: string): RepositoryState {
 
     const loadRepository = async () => {
       try {
-        // Phase 1: Open repository
+        // Phase 1: Open repository (required before all other calls)
         const repo = await Repository.open(path);
         if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading commits…' }));
+          setState((prev) => ({ ...prev, phase: 'Loading repository data…' }));
         }
 
-        // Phase 2: List commits
-        const commits = await repo.listCommits(100);
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Indexing files…' }));
-        }
+        // Phase 2: Run all independent data fetches concurrently.
+        //
+        // Arm A: list commits, then fetch all changed-file lists in parallel
+        //        (Promise.all over N diff-tree calls vs. the old sequential loop).
+        // Arm B: fetch all refs in a single for-each-ref call.
+        // Arm C: fetch working directory status in a single porcelain call.
+        // Arm D: fetch branch / upstream / ahead-behind info.
+        const [commits, refMap, workingChanges, branchInfo] = await Promise.all([
+          // Arm A
+          repo.listCommits(100).then(async (commits) => {
+            const allChangedFiles = await Promise.all(
+              commits.map((c) => repo.getChangedFiles(c.hash))
+            );
+            allChangedFiles.forEach((files, i) => {
+              commits[i]!.changedFiles = files;
+            });
+            return commits;
+          }),
+          // Arm B
+          repo.getRefs(),
+          // Arm C
+          repo.getWorkingChanges(),
+          // Arm D
+          repo.getBranchInfo(),
+        ]);
 
-        // Phase 3: Get changed files for each commit
-        for (const commit of commits) {
-          commit.changedFiles = await repo.getChangedFiles(commit.hash);
-        }
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading refs…' }));
-        }
+        // Merge refs onto commits (requires both Arm A and Arm B to be done)
+        commits.forEach((c) => {
+          c.refs = refMap.get(c.hash) ?? [];
+        });
 
-        // Phase 4: Get all refs (branches, tags, HEAD) in a single call
-        const refMap = await repo.getRefs();
-        for (const commit of commits) {
-          commit.refs = refMap.get(commit.hash) || [];
-        }
-
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading working changes…' }));
-        }
-
-        // Phase 5: Get working directory changes
-        const workingChanges = await repo.getWorkingChanges();
-
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading branch info…' }));
-        }
-
-        // Phase 6: Get branch information
-        const headAuthor = commits.length > 0 ? commits[0].author : 'Unknown';
-        const branchInfo = await repo.getBranchInfo(headAuthor);
+        // Fill in the HEAD author from commits (getBranchInfo no longer takes it as a param)
+        const headAuthor = commits.length > 0 ? commits[0]!.author : 'Unknown';
+        const branchInfoWithAuthor = { ...branchInfo, headAuthor };
 
         if (isMounted) {
           setState({
@@ -78,7 +85,7 @@ export function useRepository(path: string): RepositoryState {
               {
                 path: repo.getPath(),
                 commits,
-                branchInfo,
+                branchInfo: branchInfoWithAuthor,
               },
             ],
             loading: false,

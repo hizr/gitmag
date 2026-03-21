@@ -57,7 +57,7 @@ interface SplashScreenProps {
   scanProgress: ScanProgress;
 }
 
-export function SplashScreen({ onComplete, duration = 1500, scanProgress }: SplashScreenProps) {
+export function SplashScreen({ onComplete, duration = 800, scanProgress }: SplashScreenProps) {
   const { stdout } = useStdout();
   const termCols = stdout.columns ?? 80;
   const termRows = stdout.rows ?? 24;
@@ -124,7 +124,7 @@ export function SplashScreen({ onComplete, duration = 1500, scanProgress }: Spla
     onComplete: () => {
       // Trigger fade-out effect, wait for it to render before transitioning
       setExiting(true);
-      completionTimeoutRef.current = setTimeout(onComplete, 500);
+      completionTimeoutRef.current = setTimeout(onComplete, 150);
     },
   });
 
