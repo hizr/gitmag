@@ -22,21 +22,21 @@ interface SearchResult {
 }
 
 interface FuzzySearchPopupProps {
-  commits: CommitEntry[];
-  onSelect: (commitIdx: number) => void;
-  onHighlight?: (commitIdx: number | null) => void;
-  onClose: () => void;
-  maxWidth: number;
-  maxHeight: number;
+  readonly commits: CommitEntry[];
+  readonly onSelect: (commitIdx: number) => void;
+  readonly onHighlight?: (commitIdx: number | null) => void;
+  readonly onClose: () => void;
+  readonly maxWidth: number;
+  readonly maxHeight: number;
 }
 
 // ── Panel border helper ───────────────────────────────────────────────────────
 
 interface PanelProps {
-  label: string;
-  width: number;
-  height: number;
-  children: ReactNode;
+  readonly label: string;
+  readonly width: number;
+  readonly height: number;
+  readonly children: ReactNode;
 }
 
 function SearchPanel({ label, width, height, children }: PanelProps) {
@@ -210,7 +210,6 @@ export function FuzzySearchPopup({
     // Close popup
     if (key.escape) {
       onClose();
-      return;
     }
   });
 

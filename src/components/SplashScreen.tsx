@@ -34,6 +34,7 @@ const ANIM_INTERVAL_MS = 80;
 // ---------------------------------------------------------------------------
 
 function randomChar(): string {
+  // eslint-disable-next-line sonarjs/pseudo-random -- decorative animation scramble effect, not security-sensitive
   return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)] ?? '@';
 }
 
@@ -48,13 +49,35 @@ function scrambledRows(letterKey: string): string[] {
 }
 
 // ---------------------------------------------------------------------------
+// Animation helpers (module-level to avoid deep nesting)
+// ---------------------------------------------------------------------------
+
+function resolveLetterState(wasResolved: boolean, idx: number, elapsed: number): boolean {
+  const resolveAt = RESOLVE_TIMES[idx] ?? 0;
+  return wasResolved || elapsed >= resolveAt;
+}
+
+function makeResolvedUpdater(elapsed: number): (prev: boolean[]) => boolean[] {
+  return (prev) => prev.map((wasResolved, idx) => resolveLetterState(wasResolved, idx, elapsed));
+}
+
+function computeLetterRows(elapsed: number): string[][] {
+  return WORD.map((letter, idx) => {
+    const resolveAt = RESOLVE_TIMES[idx] ?? 0;
+    return elapsed >= resolveAt
+      ? (ASCII_LETTERS[letter] ?? scrambledRows(letter))
+      : scrambledRows(letter);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 interface SplashScreenProps {
-  onComplete: () => void;
-  duration?: number;
-  scanProgress: ScanProgress;
+  readonly onComplete: () => void;
+  readonly duration?: number;
+  readonly scanProgress: ScanProgress;
 }
 
 export function SplashScreen({ onComplete, duration = 1500, scanProgress }: SplashScreenProps) {
@@ -84,22 +107,9 @@ export function SplashScreen({ onComplete, duration = 1500, scanProgress }: Spla
     const animTimer = setInterval(() => {
       const elapsed = Date.now() - startTime;
 
-      setResolved((prev) =>
-        prev.map((wasResolved, idx) => {
-          const resolveAt = RESOLVE_TIMES[idx] ?? 0;
-          return wasResolved || elapsed >= resolveAt;
-        })
-      );
+      setResolved(makeResolvedUpdater(elapsed));
 
-      setLetterRows((_prev) =>
-        WORD.map((letter, idx) => {
-          const resolveAt = RESOLVE_TIMES[idx] ?? 0;
-          const now = Date.now() - startTime;
-          return now >= resolveAt
-            ? (ASCII_LETTERS[letter] ?? scrambledRows(letter))
-            : scrambledRows(letter);
-        })
-      );
+      setLetterRows(() => computeLetterRows(Date.now() - startTime));
     }, ANIM_INTERVAL_MS);
 
     // Mark animation complete after duration; clear anim interval — frame freezes

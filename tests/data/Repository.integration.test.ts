@@ -1,3 +1,6 @@
+/* eslint-disable sonarjs/no-os-command-from-path -- test scaffolding: execSync('git ...') is intentional in integration tests */
+/* eslint-disable sonarjs/os-command -- test scaffolding: execSync with constructed path is intentional in integration tests */
+/* eslint-disable security/detect-non-literal-fs-filename -- test scaffolding: fs operations on temp paths are intentional */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Repository } from '../../src/data/Repository.js';
 import { execSync } from 'child_process';

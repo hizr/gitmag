@@ -8,7 +8,7 @@ import { useQuit } from './hooks/useQuit.js';
 import type { ScanProgress } from './components/Scanner.js';
 import type { RepoEntry, CommitEntry, ChangedFile } from './data/mockRepos.js';
 
-export type Route =
+type Route =
   | { name: 'commit'; repoPath: string; repo: RepoEntry }
   | {
       name: 'diff';

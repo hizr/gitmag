@@ -3,20 +3,20 @@ import { Box, Text, useStdout, useInput, useApp } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile } from '../data/mockRepos.js';
 
 interface FileDiffScreenProps {
-  repo: RepoEntry;
-  commit: CommitEntry;
-  file: ChangedFile;
-  getDiff: () => Promise<string>;
-  onBack: () => void;
+  readonly repo: RepoEntry;
+  readonly commit: CommitEntry;
+  readonly file: ChangedFile;
+  readonly getDiff: () => Promise<string>;
+  readonly onBack: () => void;
 }
 
 // ── Panel border helper ───────────────────────────────────────────────────────
 
 interface PanelProps {
-  label: string;
-  width: number;
-  height: number;
-  children: ReactNode;
+  readonly label: string;
+  readonly width: number;
+  readonly height: number;
+  readonly children: ReactNode;
 }
 
 function Panel({ label, width, height, children }: PanelProps) {
@@ -46,9 +46,9 @@ function Panel({ label, width, height, children }: PanelProps) {
 // ── Diff line renderer ────────────────────────────────────────────────────────
 
 interface DiffLineProps {
-  line: string;
-  lineNumber: number;
-  showLineNumbers: boolean;
+  readonly line: string;
+  readonly lineNumber: number;
+  readonly showLineNumbers: boolean;
 }
 
 function DiffLine({ line, lineNumber, showLineNumbers }: DiffLineProps) {
@@ -169,6 +169,62 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
     }
   });
 
+  // ── Diff panel content ────────────────────────────────────────────────
+  let diffPanelContent: ReactNode;
+  if (loading) {
+    diffPanelContent = (
+      <>
+        <Box marginY={Math.floor((innerH - 1) / 2)}>
+          <Text color="cyan">Loading diff…</Text>
+        </Box>
+        {Array.from({ length: Math.max(innerH - 1, 0) }).map((_, i) => (
+          <Text key={`loading-${i}`}> </Text>
+        ))}
+      </>
+    );
+  } else if (error) {
+    diffPanelContent = (
+      <>
+        <Box marginY={Math.floor((innerH - 1) / 2)}>
+          <Text color="red">{error}</Text>
+        </Box>
+        {Array.from({ length: Math.max(innerH - 1, 0) }).map((_, i) => (
+          <Text key={`error-${i}`}> </Text>
+        ))}
+      </>
+    );
+  } else if (diffContent) {
+    diffPanelContent = (
+      <>
+        {visibleLines.map((line, i) => (
+          <DiffLine
+            key={`diff-${i}`}
+            line={line}
+            lineNumber={diffScroll + i + 1}
+            showLineNumbers={showLineNumbers}
+          />
+        ))}
+        {/* Empty rows to fill panel height */}
+        {Array.from({ length: Math.max(innerH - visibleLines.length, 0) }).map((_, i) => (
+          <Text key={`empty-${i}`}> </Text>
+        ))}
+      </>
+    );
+  } else {
+    diffPanelContent = (
+      <>
+        <Box marginY={Math.floor((innerH - 1) / 2)}>
+          <Text color="gray" dimColor>
+            No diff available for this file
+          </Text>
+        </Box>
+        {Array.from({ length: Math.max(innerH - 1, 0) }).map((_, i) => (
+          <Text key={`empty-nodiff-${i}`}> </Text>
+        ))}
+      </>
+    );
+  }
+
   // ── Render ────────────────────────────────────────────────────────────
   return (
     <Box flexDirection="column" width={termCols} height={termRows} paddingX={1}>
@@ -193,51 +249,7 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
 
       {/* ── Diff panel ────────────────────────────────────────────────── */}
       <Panel label="File Diff" width={termCols - 2} height={panelHeight}>
-        {loading ? (
-          <>
-            <Box marginY={Math.floor((innerH - 1) / 2)}>
-              <Text color="cyan">Loading diff…</Text>
-            </Box>
-            {Array.from({ length: Math.max(innerH - 1, 0) }).map((_, i) => (
-              <Text key={`loading-${i}`}> </Text>
-            ))}
-          </>
-        ) : error ? (
-          <>
-            <Box marginY={Math.floor((innerH - 1) / 2)}>
-              <Text color="red">{error}</Text>
-            </Box>
-            {Array.from({ length: Math.max(innerH - 1, 0) }).map((_, i) => (
-              <Text key={`error-${i}`}> </Text>
-            ))}
-          </>
-        ) : diffContent ? (
-          <>
-            {visibleLines.map((line, i) => (
-              <DiffLine
-                key={`diff-${i}`}
-                line={line}
-                lineNumber={diffScroll + i + 1}
-                showLineNumbers={showLineNumbers}
-              />
-            ))}
-            {/* Empty rows to fill panel height */}
-            {Array.from({ length: Math.max(innerH - visibleLines.length, 0) }).map((_, i) => (
-              <Text key={`empty-${i}`}> </Text>
-            ))}
-          </>
-        ) : (
-          <>
-            <Box marginY={Math.floor((innerH - 1) / 2)}>
-              <Text color="gray" dimColor>
-                No diff available for this file
-              </Text>
-            </Box>
-            {Array.from({ length: Math.max(innerH - 1, 0) }).map((_, i) => (
-              <Text key={`empty-nodiff-${i}`}> </Text>
-            ))}
-          </>
-        )}
+        {diffPanelContent}
       </Panel>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}

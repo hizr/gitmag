@@ -29,6 +29,15 @@ jobs:
       - name: Lint code
         run: npm run lint
 
+      - name: Dead code & dependency check (knip)
+        run: npm run dead-code
+
+      - name: Duplication check (jscpd)
+        run: npm run duplication
+
+      - name: Dependency vulnerability audit
+        run: npm run audit
+
       - name: Run tests
         run: npm test
 

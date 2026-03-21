@@ -1,8 +1,10 @@
+/* eslint-disable security/detect-non-literal-fs-filename -- test scaffolding: fs operations on temp paths are intentional */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { simpleGit } from 'simple-git';
 import { Repository } from '../../src/data/Repository.js';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 describe('Repository', () => {
   let tempDir: string;
@@ -43,15 +45,12 @@ describe('Repository', () => {
     expect(repo.getPath()).toBe(tempDir);
   });
 
-  it.skip('throws when opening a non-git directory', async () => {
-    // NOTE: simple-git may not throw reliably on non-git directories
-    // This is a known limitation. In production, Repository should be paired
-    // with additional validation (e.g., checking for .git folder explicitly).
-    const nonGitDir = path.join(process.cwd(), '.non-git-' + Date.now());
+  it('throws when opening a non-git directory', async () => {
+    const nonGitDir = path.join(os.tmpdir(), '.non-git-' + Date.now());
     fs.mkdirSync(nonGitDir, { recursive: true });
 
     try {
-      const _repo = await Repository.open(nonGitDir);
+      await Repository.open(nonGitDir);
       expect.fail('Repository.open should have thrown for non-git directory');
     } catch (err: unknown) {
       const error = err as { message?: string };
