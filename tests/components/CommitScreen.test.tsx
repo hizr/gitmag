@@ -177,7 +177,7 @@ describe('CommitScreen', () => {
     );
     const output = lastFrame();
     // First commit has M and A statuses
-    expect(output).toMatch(/M|A/);
+    expect(output).toMatch(/[MA]/);
   });
 
   // ── Footer ────────────────────────────────────────────────────────────────

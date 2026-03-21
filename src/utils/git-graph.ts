@@ -13,6 +13,58 @@ export interface GraphLine {
 }
 
 /**
+ * Find the first lane index pointing to this commit hash, or -1 if none.
+ */
+function findPrimaryLane(lanes: string[], hash: string): number {
+  return lanes.indexOf(hash);
+}
+
+/**
+ * Find all lane indices pointing to this commit hash.
+ */
+function findMatchingLanes(lanes: string[], hash: string): number[] {
+  const indices: number[] = [];
+  for (let i = 0; i < lanes.length; i++) {
+    if (lanes[i] === hash) {
+      indices.push(i);
+    }
+  }
+  return indices;
+}
+
+/**
+ * Update the lane array after processing a commit:
+ *   - Replace the primary lane with the first parent (or remove it for root commits)
+ *   - Open a new lane for the second parent of a merge commit
+ *   - Remove duplicate lanes that were also waiting for the same hash
+ */
+function updateLanes(
+  lanes: string[],
+  column: number,
+  firstParent: string | null,
+  secondParent: string | null,
+  matchingLaneIndices: number[]
+): void {
+  // Replace the primary lane with the first parent (or remove for root commits)
+  if (firstParent !== null) {
+    lanes[column] = firstParent;
+  } else {
+    lanes.splice(column, 1);
+  }
+
+  // Merge commit: open a lane for the second parent
+  if (secondParent !== null && !lanes.includes(secondParent)) {
+    lanes.push(secondParent);
+  }
+
+  // Close extra lanes that were also waiting for the same commit hash
+  for (let i = matchingLaneIndices.length - 1; i >= 1; i--) {
+    const dupIdx = matchingLaneIndices[i] as number;
+    lanes.splice(dupIdx, 1);
+  }
+}
+
+/**
  * Build one GraphLine per commit from a topologically-sorted list
  * (newest first, parents appearing after their children).
  *
@@ -30,51 +82,22 @@ export function buildGraphLines(commits: CommitEntry[]): GraphLine[] {
   const lines: GraphLine[] = [];
 
   for (const commit of commits) {
-    // ── Find which existing lane(s) point to this commit ──────────────
-    const matchingLaneIndices: number[] = [];
-    for (let i = 0; i < lanes.length; i++) {
-      if (lanes[i] === commit.hash) {
-        matchingLaneIndices.push(i);
-      }
-    }
+    const matchingLaneIndices = findMatchingLanes(lanes, commit.hash);
 
     // If no lane claimed this commit, it starts a new branch (root case or
     // an unattached head — open a new lane at the end)
-    const column = matchingLaneIndices.length > 0 ? matchingLaneIndices[0] : lanes.length;
+    const primaryLane = findPrimaryLane(lanes, commit.hash);
+    const column = primaryLane !== -1 ? primaryLane : lanes.length;
 
     if (matchingLaneIndices.length === 0) {
-      lanes.push(commit.hash); // will be replaced below
+      lanes.push(commit.hash); // placeholder, replaced below
     }
 
-    // ── Update lanes after processing this commit ──────────────────────
     const firstParent = commit.parentHash[0] ?? null;
     const secondParent = commit.parentHash[1] ?? null;
 
-    // Replace the primary lane with the first parent
-    if (firstParent !== null) {
-      lanes[column] = firstParent;
-    } else {
-      // Root commit — remove this lane (splice, then compact)
-      lanes.splice(column, 1);
-    }
+    updateLanes(lanes, column, firstParent, secondParent, matchingLaneIndices);
 
-    // Merge commit: open a lane for the second parent
-    if (secondParent !== null) {
-      // If a duplicate lane already tracks the second parent, skip
-      if (!lanes.includes(secondParent)) {
-        lanes.push(secondParent);
-      }
-    }
-
-    // Close extra lanes that were also waiting for the same commit hash
-    // (can happen when two branches share the same parent that was already
-    // consumed — clean duplicates introduced by the merge)
-    for (let i = matchingLaneIndices.length - 1; i >= 1; i--) {
-      const dupIdx = matchingLaneIndices[i];
-      lanes.splice(dupIdx, 1);
-    }
-
-    // ── Build the visual prefix ────────────────────────────────────────
     const laneCount = Math.max(lanes.length, column + 1);
     const prefix = buildPrefix(column, laneCount, commit.parentHash.length);
 

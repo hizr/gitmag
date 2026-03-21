@@ -12,7 +12,21 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dead-code": "knip",
+    "duplication": "jscpd src --min-tokens 80 --threshold 0",
+    "audit": "npm audit --audit-level=high"
+  },
+  "knip": {
+    "entry": [
+      "src/cli.ts"
+    ],
+    "project": [
+      "src/**/*.{ts,tsx}"
+    ],
+    "ignoreDependencies": [
+      "ecc-universal"
+    ]
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -25,8 +39,8 @@
   },
   "dependencies": {
     "@inkjs/ui": "^2.0.0",
+    "ansi-escapes": "^7.3.0",
     "clipboardy": "^5.3.1",
-    "ecc-universal": "^1.8.0",
     "fuse.js": "^7.1.0",
     "ink": "^5.2.1",
     "react": "^18.3.1",
@@ -41,11 +55,16 @@
     "@types/react": "^18.2.79",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
+    "ecc-universal": "^1.8.0",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-security": "^4.0.0",
+    "eslint-plugin-sonarjs": "^4.0.2",
     "husky": "^9.1.7",
     "ink-testing-library": "^4.0.0",
+    "jscpd": "^4.0.8",
     "jsdom": "^28.1.0",
+    "knip": "^6.0.1",
     "lint-staged": "^16.3.3",
     "prettier": "^3.8.1",
     "react-dom": "^18.3.1",

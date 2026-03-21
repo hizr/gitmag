@@ -1,0 +1,7 @@
+{
+  "threshold": 0,
+  "minTokens": 80,
+  "format": ["typescript"],
+  "path": ["src"],
+  "ignore": ["**/*.test.ts", "**/*.test.tsx"]
+}

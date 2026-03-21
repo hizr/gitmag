@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
-import { Box, Text, useStdout, useInput, useApp } from 'ink';
+import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
 import clipboard from 'clipboardy';
 import type {
   RepoEntry,
@@ -31,22 +31,27 @@ const FILE_STATUS_COLOR: Record<string, string> = {
 };
 
 interface CommitScreenProps {
-  repo: RepoEntry;
-  initialSelectedCommitIdx?: number;
-  initialSelectedFileIdx?: number;
-  onBack: () => void;
-  onOpenDiff?: (commit: CommitEntry, file: ChangedFile, fileIdx: number, commitIdx: number) => void;
-  workingChanges?: WorkingChanges | null;
+  readonly repo: RepoEntry;
+  readonly initialSelectedCommitIdx?: number;
+  readonly initialSelectedFileIdx?: number;
+  readonly onBack: () => void;
+  readonly onOpenDiff?: (
+    commit: CommitEntry,
+    file: ChangedFile,
+    fileIdx: number,
+    commitIdx: number
+  ) => void;
+  readonly workingChanges?: WorkingChanges | null;
 }
 
 // ── Panel border helper ───────────────────────────────────────────────────────
 
 interface PanelProps {
-  label: string;
-  focused: boolean;
-  width: number;
-  height: number;
-  children: ReactNode;
+  readonly label: string;
+  readonly focused: boolean;
+  readonly width: number;
+  readonly height: number;
+  readonly children: ReactNode;
 }
 
 function Panel({ label, focused, width, height, children }: PanelProps) {
@@ -77,12 +82,12 @@ function Panel({ label, focused, width, height, children }: PanelProps) {
 // ── Commit row in the graph panel ─────────────────────────────────────────────
 
 interface GraphRowProps {
-  prefix: string;
-  commit: CommitEntry;
-  selected: boolean;
-  maxWidth: number;
-  isMatchedResult?: boolean;
-  isActiveMatch?: boolean;
+  readonly prefix: string;
+  readonly commit: CommitEntry;
+  readonly selected: boolean;
+  readonly maxWidth: number;
+  readonly isMatchedResult?: boolean;
+  readonly isActiveMatch?: boolean;
 }
 
 function GraphRow({
@@ -109,14 +114,32 @@ function GraphRow({
   const hash = displayHash.padEnd(7);
   const message = commit.message.slice(0, msgWidth).padEnd(msgWidth);
   const author = commit.author.slice(0, 12).padEnd(12);
-  const bg = selected ? 'bgBlue' : isActiveMatch ? 'bgGreen' : undefined;
-  const matchMarker = isMatchedResult ? (isActiveMatch ? '●' : '○') : ' ';
+  let bg: 'bgBlue' | 'bgGreen' | undefined;
+  if (selected) {
+    bg = 'bgBlue';
+  } else if (isActiveMatch) {
+    bg = 'bgGreen';
+  }
+
+  let matchMarker: string;
+  if (!isMatchedResult) {
+    matchMarker = ' ';
+  } else if (isActiveMatch) {
+    matchMarker = '●';
+  } else {
+    matchMarker = '○';
+  }
 
   // Override prefix for WORKING node to show diamond
   const displayPrefix = isWorking ? prefix.replace('●', '◆') : prefix;
 
   // Compute background color once
-  const bgColor = bg ? (bg === 'bgGreen' ? 'green' : 'blue') : undefined;
+  let bgColor: 'green' | 'blue' | undefined;
+  if (bg === 'bgGreen') {
+    bgColor = 'green';
+  } else if (bg !== undefined) {
+    bgColor = 'blue';
+  }
 
   return (
     <Box>
@@ -165,8 +188,8 @@ function GraphRow({
 // ── Branch info panel ─────────────────────────────────────────────────────────
 
 interface BranchInfoPanelProps {
-  branchInfo: BranchInfo | undefined;
-  width: number;
+  readonly branchInfo: BranchInfo | undefined;
+  readonly width: number;
 }
 
 function BranchInfoPanel({ branchInfo, width }: BranchInfoPanelProps) {
@@ -185,12 +208,14 @@ function BranchInfoPanel({ branchInfo, width }: BranchInfoPanelProps) {
   const rightColWidth = width - halfWidth - 6;
 
   // Format ahead/behind display
-  const aheadBehindStr =
-    branchInfo.remoteBranch && (branchInfo.ahead > 0 || branchInfo.behind > 0)
-      ? `↑${branchInfo.ahead} ↓${branchInfo.behind}`
-      : branchInfo.remoteBranch
-        ? '✓'
-        : '—';
+  let aheadBehindStr: string;
+  if (branchInfo.remoteBranch && (branchInfo.ahead > 0 || branchInfo.behind > 0)) {
+    aheadBehindStr = `↑${branchInfo.ahead} ↓${branchInfo.behind}`;
+  } else if (branchInfo.remoteBranch) {
+    aheadBehindStr = '✓';
+  } else {
+    aheadBehindStr = '—';
+  }
 
   // Format remote tracking display
   const statusStr = branchInfo.remoteBranch
@@ -230,7 +255,66 @@ function BranchInfoPanel({ branchInfo, width }: BranchInfoPanelProps) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Pure helpers ──────────────────────────────────────────────────────────────
+
+type InfoLine = { label: string; value: string; wrap?: boolean };
+
+function buildFileLines(commit: CommitEntry): FileLine[] {
+  if (commit.hash !== '__WORKING__') {
+    return commit.changedFiles.map((f) => ({ status: f.status, path: f.path }));
+  }
+
+  const lines: FileLine[] = [];
+  const staged = commit.changedFiles.filter(
+    (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
+  );
+  const unstaged = commit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
+  const untracked = commit.changedFiles.filter((f) => f.status === '??');
+
+  if (staged.length > 0) {
+    lines.push({ status: '📦', path: 'Staged', isHeader: true });
+    lines.push(...staged.map((f) => ({ status: f.status, path: f.path })));
+  }
+  if (unstaged.length > 0) {
+    lines.push({ status: '✎', path: 'Unstaged', isHeader: true });
+    lines.push(...unstaged.map((f) => ({ status: f.status, path: f.path })));
+  }
+  if (untracked.length > 0) {
+    lines.push({ status: '?', path: 'Untracked', isHeader: true });
+    lines.push(...untracked.map((f) => ({ status: f.status, path: f.path })));
+  }
+  return lines;
+}
+
+function buildInfoLines(commit: CommitEntry): { infoLines: InfoLine[]; bodyLines: string[] } {
+  if (commit.hash === '__WORKING__') {
+    const staged = commit.changedFiles.filter(
+      (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
+    );
+    const unstaged = commit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
+    const untracked = commit.changedFiles.filter((f) => f.status === '??');
+    return {
+      infoLines: [
+        { label: 'Status ', value: 'Working directory changes' },
+        { label: 'Staged ', value: `${staged.length} file(s)` },
+        { label: 'Unstaged', value: `${unstaged.length} file(s)` },
+        { label: 'Untracked', value: `${untracked.length} file(s)` },
+      ],
+      bodyLines: [],
+    };
+  }
+
+  return {
+    infoLines: [
+      { label: 'Hash  ', value: commit.hash },
+      { label: 'Author', value: commit.author },
+      { label: 'Date  ', value: commit.date },
+      { label: 'Refs  ', value: commit.refs.length > 0 ? commit.refs.join(', ') : '—' },
+      { label: 'Message', value: commit.message, wrap: true },
+    ],
+    bodyLines: commit.body ? ['', ...commit.body.split('\n')] : [],
+  };
+}
 
 export function CommitScreen({
   repo,
@@ -353,195 +437,166 @@ export function CommitScreen({
     );
   }, [selectedCommit.hash]);
 
-  // ── Build file lines (needed before useInput handler) ──────────────────
-  const allFileLines: FileLine[] = [];
-
-  if (displayCommit.hash === '__WORKING__') {
-    // For WORKING node, group files by category
-    const staged = displayCommit.changedFiles.filter(
-      (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
-    );
-    const unstaged = displayCommit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
-    const untracked = displayCommit.changedFiles.filter((f) => f.status === '??');
-
-    if (staged.length > 0) {
-      allFileLines.push({ status: '📦', path: 'Staged', isHeader: true });
-      allFileLines.push(...staged.map((f) => ({ status: f.status, path: f.path })));
-    }
-    if (unstaged.length > 0) {
-      allFileLines.push({ status: '✎', path: 'Unstaged', isHeader: true });
-      allFileLines.push(...unstaged.map((f) => ({ status: f.status, path: f.path })));
-    }
-    if (untracked.length > 0) {
-      allFileLines.push({ status: '?', path: 'Untracked', isHeader: true });
-      allFileLines.push(...untracked.map((f) => ({ status: f.status, path: f.path })));
-    }
-  } else {
-    // Normal commit: flat list of files
-    allFileLines.push(
-      ...displayCommit.changedFiles.map((f) => ({ status: f.status, path: f.path }))
-    );
-  }
-
-  // ── Keyboard input ────────────────────────────────────────────────────
-  useInput((input, key) => {
-    // Handle search-specific keys when search is open
-    if (searchOpen) {
-      // Let FuzzySearchPopup handle all input via its own useInput
-      return;
-    }
-
-    if (input === 'q') {
-      exit();
-      return;
-    }
-
-    // Handle n/m navigation when matches exist
-    if (input === 'n' && matchIndices.length > 0) {
-      const nextIdx = (activeMatchIdx + 1) % matchIndices.length;
-      setActiveMatchIdx(nextIdx);
-      const newCommitIdx = matchIndices[nextIdx]!;
-      setSelectedCommitIdx(newCommitIdx);
-      // Adjust scroll
-      setGraphScroll((p) => {
-        const next = newCommitIdx;
-        return next >= p + graphInnerH ? next - graphInnerH + 1 : next < p ? next : p;
-      });
-      return;
-    }
-
-    if (input === 'm' && matchIndices.length > 0) {
-      const nextIdx =
-        activeMatchIdx === -1
-          ? matchIndices.length - 1
-          : (activeMatchIdx - 1 + matchIndices.length) % matchIndices.length;
-      setActiveMatchIdx(nextIdx);
-      const newCommitIdx = matchIndices[nextIdx]!;
-      setSelectedCommitIdx(newCommitIdx);
-      // Adjust scroll
-      setGraphScroll((p) => {
-        const next = newCommitIdx;
-        return next >= p + graphInnerH ? next - graphInnerH + 1 : next < p ? next : p;
-      });
-      return;
-    }
-
-    // Clear matches when pressing escape
-    if (key.escape && matchIndices.length > 0) {
-      setMatchIndices([]);
-      setActiveMatchIdx(-1);
-      return;
-    }
-
-    // Open search on /
-    if (input === '/') {
-      setSearchOpen(true);
-      return;
-    }
-
-    if (key.tab) {
-      cycleTab();
-      return;
-    }
-
-    if (input === 'c') {
-      copyHash();
-      return;
-    }
-
-    if (key.backspace || key.delete) {
-      if (focus === 'files') {
-        setFocus('graph');
+  // ── Navigate to next/prev search match ───────────────────────────────
+  const navigateMatch = useCallback(
+    (direction: 'next' | 'prev') => {
+      if (matchIndices.length === 0) return;
+      let nextIdx: number;
+      if (direction === 'next') {
+        nextIdx = (activeMatchIdx + 1) % matchIndices.length;
+      } else if (activeMatchIdx === -1) {
+        nextIdx = matchIndices.length - 1;
       } else {
-        onBack();
+        nextIdx = (activeMatchIdx - 1 + matchIndices.length) % matchIndices.length;
       }
-      return;
-    }
+      setActiveMatchIdx(nextIdx);
+      const newCommitIdx = matchIndices[nextIdx]!;
+      setSelectedCommitIdx(newCommitIdx);
+      setGraphScroll((p) => {
+        const next = newCommitIdx;
+        if (next >= p + graphInnerH) return next - graphInnerH + 1;
+        if (next < p) return next;
+        return p;
+      });
+    },
+    [matchIndices, activeMatchIdx, graphInnerH]
+  );
 
-    if (key.return && focus === 'graph') {
-      setFocus('files');
-      return;
-    }
-
-    if (key.return && focus === 'files' && onOpenDiff) {
-      const selectedFile = allFileLines[selectedFileIdx];
-      if (selectedFile && !selectedFile.isHeader) {
-        // Convert FileLine back to ChangedFile format
-        onOpenDiff(
-          selectedCommit,
-          {
-            status: selectedFile.status as any,
-            path: selectedFile.path,
-          },
-          selectedFileIdx,
-          selectedCommitIdx
-        );
-      }
-      return;
-    }
-
-    const up = key.upArrow || input === 'k';
-    const down = key.downArrow || input === 'j';
-
-    if (focus === 'graph') {
-      if (up) setSelectedCommitIdx((p) => Math.max(p - 1, 0));
-      if (down) setSelectedCommitIdx((p) => Math.min(p + 1, graphLines.length - 1));
-      // Keep the selected row visible
-      if (up) setGraphScroll((p) => Math.min(p, Math.max(selectedCommitIdx - 1, 0)));
-      if (down)
+  // ── Navigate graph rows ───────────────────────────────────────────────
+  const navigateGraph = useCallback(
+    (direction: 'up' | 'down') => {
+      if (direction === 'up') {
+        setSelectedCommitIdx((p) => Math.max(p - 1, 0));
+        setGraphScroll((p) => Math.min(p, Math.max(selectedCommitIdx - 1, 0)));
+      } else {
+        setSelectedCommitIdx((p) => Math.min(p + 1, graphLines.length - 1));
         setGraphScroll((p) => {
           const next = selectedCommitIdx + 1;
           return next >= p + graphInnerH ? next - graphInnerH + 1 : p;
         });
-    } else if (focus === 'files') {
-      if (allFileLines.length === 0) return; // Silent no-op when no files
-      const maxIdx = allFileLines.length - 1;
-      if (up) {
+      }
+    },
+    [selectedCommitIdx, graphLines.length, graphInnerH]
+  );
+
+  // ── Navigate file list ────────────────────────────────────────────────
+  const navigateFiles = useCallback(
+    (direction: 'up' | 'down', fileLines: FileLine[]) => {
+      if (fileLines.length === 0) return;
+      const maxIdx = fileLines.length - 1;
+      if (direction === 'up') {
         setSelectedFileIdx((p) => Math.max(p - 1, 0));
         setFilesScroll((p) => Math.min(p, Math.max(selectedFileIdx - 1, 0)));
-      }
-      if (down) {
+      } else {
         setSelectedFileIdx((p) => Math.min(p + 1, maxIdx));
         setFilesScroll((p) => {
           const next = selectedFileIdx + 1;
           return next >= p + bottomInnerH ? next - bottomInnerH + 1 : p;
         });
       }
+    },
+    [selectedFileIdx, bottomInnerH]
+  );
+
+  // ── Build file lines (needed before useInput handler) ──────────────────
+  const allFileLines = buildFileLines(displayCommit);
+
+  // ── Keyboard sub-handlers ─────────────────────────────────────────────
+  const handleOpenDiff = useCallback(
+    (fileLines: FileLine[]) => {
+      if (!onOpenDiff) return;
+      const selectedFile = fileLines[selectedFileIdx];
+      if (selectedFile && !selectedFile.isHeader) {
+        onOpenDiff(
+          selectedCommit,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          { status: selectedFile.status as any, path: selectedFile.path },
+          selectedFileIdx,
+          selectedCommitIdx
+        );
+      }
+    },
+    [onOpenDiff, selectedCommit, selectedFileIdx, selectedCommitIdx]
+  );
+
+  const handleBackOrDelete = useCallback(() => {
+    if (focus === 'files') {
+      setFocus('graph');
+    } else {
+      onBack();
     }
+  }, [focus, onBack]);
+
+  const handleReturn = useCallback(
+    (fileLines: FileLine[]) => {
+      if (focus === 'graph') {
+        setFocus('files');
+      } else if (focus === 'files') {
+        handleOpenDiff(fileLines);
+      }
+    },
+    [focus, handleOpenDiff]
+  );
+
+  const handleArrowInput = useCallback(
+    (input: string, key: Key, fileLines: FileLine[]) => {
+      const up = key.upArrow || input === 'k';
+      const down = key.downArrow || input === 'j';
+      if (!up && !down) return;
+      if (focus === 'graph') {
+        navigateGraph(up ? 'up' : 'down');
+      } else if (focus === 'files') {
+        navigateFiles(up ? 'up' : 'down', fileLines);
+      }
+    },
+    [focus, navigateGraph, navigateFiles]
+  );
+
+  // ── Keyboard input ────────────────────────────────────────────────────
+  useInput((input, key) => {
+    if (searchOpen) return;
+    if (input === 'q') {
+      exit();
+      return;
+    }
+    if (input === 'n') {
+      navigateMatch('next');
+      return;
+    }
+    if (input === 'm') {
+      navigateMatch('prev');
+      return;
+    }
+    if (key.escape && matchIndices.length > 0) {
+      setMatchIndices([]);
+      setActiveMatchIdx(-1);
+      return;
+    }
+    if (input === '/') {
+      setSearchOpen(true);
+      return;
+    }
+    if (key.tab) {
+      cycleTab();
+      return;
+    }
+    if (input === 'c') {
+      copyHash();
+      return;
+    }
+    if (key.backspace || key.delete) {
+      handleBackOrDelete();
+      return;
+    }
+    if (key.return) {
+      handleReturn(allFileLines);
+      return;
+    }
+    handleArrowInput(input, key, allFileLines);
   });
 
   // ── Build info lines ─────────────────────────────────────────────────
-  let infoLines: Array<{ label: string; value: string; wrap?: boolean }>;
-  let bodyLines: string[];
-
-  if (displayCommit.hash === '__WORKING__') {
-    // For WORKING node, show status summary instead of commit metadata
-    const staged = displayCommit.changedFiles.filter(
-      (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
-    );
-    const unstaged = displayCommit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
-    const untracked = displayCommit.changedFiles.filter((f) => f.status === '??');
-
-    infoLines = [
-      { label: 'Status ', value: 'Working directory changes' },
-      { label: 'Staged ', value: `${staged.length} file(s)` },
-      { label: 'Unstaged', value: `${unstaged.length} file(s)` },
-      { label: 'Untracked', value: `${untracked.length} file(s)` },
-    ];
-    bodyLines = [];
-  } else {
-    infoLines = [
-      { label: 'Hash  ', value: displayCommit.hash },
-      { label: 'Author', value: displayCommit.author },
-      { label: 'Date  ', value: displayCommit.date },
-      {
-        label: 'Refs  ',
-        value: displayCommit.refs.length > 0 ? displayCommit.refs.join(', ') : '—',
-      },
-      { label: 'Message', value: displayCommit.message, wrap: true },
-    ];
-    bodyLines = displayCommit.body ? ['', ...displayCommit.body.split('\n')] : [];
-  }
+  const { infoLines, bodyLines } = buildInfoLines(displayCommit);
 
   // ── Visible slices ────────────────────────────────────────────────────
   const visibleGraph = graphLines.slice(graphScroll, graphScroll + graphInnerH);
@@ -551,7 +606,28 @@ export function CommitScreen({
 
   const visibleFiles = allFileLines.slice(filesScroll, filesScroll + bottomInnerH);
 
-  // ── Render ────────────────────────────────────────────────────────────
+  // ── Footer node ────────────────────────────────────────────────────────
+  let footerNode: ReactNode;
+  if (copyStatus) {
+    footerNode = (
+      <Text color="green" bold>
+        {copyStatus}
+      </Text>
+    );
+  } else if (matchIndices.length > 0) {
+    footerNode = (
+      <Text color="gray" dimColor>
+        [n/m] next/prev match ({matchIndices.length} results) [/] new search [ESC] clear [j/k]
+        navigate [q] quit
+      </Text>
+    );
+  } else {
+    footerNode = (
+      <Text color="gray" dimColor>
+        [/] search [j/k] navigate [enter] select/diff [c] copy SHA [bksp] back [q] quit
+      </Text>
+    );
+  }
   return (
     <Box flexDirection="column" width={termCols} height={termRows} paddingX={1}>
       {/* ── Header ───────────────────────────────────────────────────── */}
@@ -589,7 +665,9 @@ export function CommitScreen({
               // Adjust scroll to show selected commit
               setGraphScroll((p) => {
                 const next = commitIdx;
-                return next >= p + graphInnerH ? next - graphInnerH + 1 : next < p ? next : p;
+                if (next >= p + graphInnerH) return next - graphInnerH + 1;
+                if (next < p) return next;
+                return p;
               });
             }}
             onHighlight={(commitIdx) => {
@@ -729,22 +807,7 @@ export function CommitScreen({
       </Box>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <Box marginTop={0}>
-        {copyStatus ? (
-          <Text color="green" bold>
-            {copyStatus}
-          </Text>
-        ) : matchIndices.length > 0 ? (
-          <Text color="gray" dimColor>
-            [n/m] next/prev match ({matchIndices.length} results) [/] new search [ESC] clear [j/k]
-            navigate [q] quit
-          </Text>
-        ) : (
-          <Text color="gray" dimColor>
-            [/] search [j/k] navigate [enter] select/diff [c] copy SHA [bksp] back [q] quit
-          </Text>
-        )}
-      </Box>
+      <Box marginTop={0}>{footerNode}</Box>
     </Box>
   );
 }

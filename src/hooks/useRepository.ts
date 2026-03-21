@@ -11,6 +11,20 @@ export interface RepositoryState {
   workingChanges: WorkingChanges | null;
 }
 
+function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    const base = err.message;
+    if ('cause' in err && err.cause instanceof Error) {
+      return `${base}\n(${err.cause.message})`;
+    }
+    return base;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  return 'Unknown error loading repository';
+}
+
 /**
  * Hook to load a repository from the given path.
  * Returns loading/error states and a single-element repo array on success.
@@ -89,24 +103,12 @@ export function useRepository(path: string): RepositoryState {
           });
         }
       } catch (err) {
-        let errorMessage = 'Unknown error loading repository';
-
-        if (err instanceof Error) {
-          errorMessage = err.message;
-          // Include underlying cause if available
-          if ('cause' in err && err.cause instanceof Error) {
-            errorMessage += `\n(${(err.cause as Error).message})`;
-          }
-        } else if (typeof err === 'string') {
-          errorMessage = err;
-        }
-
         if (isMounted) {
           setState((prev) => ({
             ...prev,
             repos: [],
             loading: false,
-            error: errorMessage,
+            error: extractErrorMessage(err),
             repository: null,
           }));
         }
