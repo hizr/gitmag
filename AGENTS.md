@@ -184,17 +184,35 @@ fix CRITICAL issues before continuing, and rotate any exposed secrets.
 Agents live in `~/.claude/agents/` (installed via `ecc-universal`).
 Invoke them proactively — do not wait for the user to ask.
 
-| Agent                  | When to use                               |
-| ---------------------- | ----------------------------------------- |
-| `planner`              | Complex features, before writing any code |
-| `architect`            | Architectural / system-design decisions   |
-| `tdd-guide`            | Any new feature or bug fix (enforce TDD)  |
-| `code-reviewer`        | After writing or modifying code           |
-| `security-reviewer`    | Before every commit                       |
-| `build-error-resolver` | When the build fails                      |
-| `e2e-runner`           | Critical user flows                       |
-| `refactor-cleaner`     | Dead code removal and cleanup             |
-| `doc-updater`          | Keeping documentation current             |
+| Agent                    | When to use                               |
+| ------------------------ | ----------------------------------------- |
+| `planner`                | Complex features, before writing any code |
+| `architect`              | Architectural / system-design decisions   |
+| `tdd-guide`              | Any new feature or bug fix (enforce TDD)  |
+| `code-reviewer`          | After writing or modifying code           |
+| `security-reviewer`      | Before every commit                       |
+| `build-error-resolver`   | When the build fails                      |
+| `e2e-runner`             | Critical user flows                       |
+| `refactor-cleaner`       | Dead code removal and cleanup             |
+| `doc-updater`            | Keeping documentation current             |
+| `docs-lookup`            | Documentation and API reference research  |
+| `typescript-reviewer`    | TypeScript/JavaScript code review         |
+| `python-reviewer`        | Python code review                        |
+| `go-reviewer`            | Go code review                            |
+| `go-build-resolver`      | Go build error resolution                 |
+| `java-reviewer`          | Java and Spring Boot code review          |
+| `java-build-resolver`    | Java/Maven/Gradle build errors            |
+| `kotlin-reviewer`        | Kotlin/Android/KMP code review            |
+| `kotlin-build-resolver`  | Kotlin/Gradle build errors                |
+| `rust-reviewer`          | Rust code review                          |
+| `rust-build-resolver`    | Rust build error resolution               |
+| `cpp-reviewer`           | C++ code review                           |
+| `cpp-build-resolver`     | C++ build error resolution                |
+| `pytorch-build-resolver` | PyTorch/CUDA training error resolution    |
+| `database-reviewer`      | PostgreSQL/Supabase specialist            |
+| `chief-of-staff`         | Communication triage and drafts           |
+| `loop-operator`          | Autonomous loop execution and monitoring  |
+| `harness-optimizer`      | Harness config tuning                     |
 
 Run independent agents **in parallel** whenever possible to save time.
 
