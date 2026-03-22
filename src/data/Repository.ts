@@ -2,6 +2,8 @@ import { simpleGit } from 'simple-git';
 import type { CommitEntry, ChangedFile, WorkingChanges, BranchInfo } from './mockRepos.js';
 import type { SimpleGit } from 'simple-git';
 
+type FileStatus = 'M' | 'A' | 'D' | 'R';
+
 /**
  * Repository wraps simple-git to provide typed, dedicated functions for
  * retrieving commit and file data from a git repository.
@@ -115,13 +117,60 @@ export class Repository {
           const [status, ...pathParts] = line.split('\t');
           const path = pathParts.join('\t'); // Handle paths with tabs (rare)
           return {
-            status: status as 'M' | 'A' | 'D' | 'R',
+            status: status as FileStatus,
             path,
           };
         });
     } catch {
       // Commit may not exist or have no files; return empty
       return [];
+    }
+  }
+
+  /**
+   * Batch-fetch changed files for all commits in one git log call.
+   * Returns a Map<commitHash, ChangedFile[]> to replace 100+ individual diff-tree calls.
+   * Uses a single "git log --name-status" with a delimiter to parse the output efficiently.
+   * @param limit Max number of commits to include
+   */
+  async getChangedFilesForAllCommits(limit = 100): Promise<Map<string, ChangedFile[]>> {
+    const result = new Map<string, ChangedFile[]>();
+
+    try {
+      // Use git log with --name-status to get all files changed in a single call
+      // Format: each commit section starts with "COMMIT <hash>" (our custom marker)
+      // Then lines of "<status>\t<path>"
+      const output = await this.git.raw([
+        'log',
+        '--name-status',
+        '--pretty=format:COMMIT %H',
+        `--max-count=${limit}`,
+      ]);
+
+      let currentHash: string | null = null;
+
+      output.split('\n').forEach((line: string) => {
+        if (line.startsWith('COMMIT ')) {
+          // New commit marker
+          currentHash = line.substring(7).trim(); // Skip "COMMIT "
+          result.set(currentHash, []);
+        } else if (currentHash && line.trim()) {
+          // File change line: "<status>\t<path>"
+          const [status, ...pathParts] = line.split('\t');
+          const path = pathParts.join('\t');
+          if (status && path) {
+            result.get(currentHash)!.push({
+              status: status as FileStatus,
+              path,
+            });
+          }
+        }
+      });
+
+      return result;
+    } catch {
+      // Fallback if git log fails; return empty map
+      return result;
     }
   }
 

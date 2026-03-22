@@ -57,34 +57,28 @@ export function useRepository(path: string): RepositoryState {
           setState((prev) => ({ ...prev, phase: 'Indexing files…' }));
         }
 
-        // Phase 3: Get changed files for each commit
+        // Phase 3: Get changed files for all commits in a single batch call
+        const changedFilesMap = await repo.getChangedFilesForAllCommits(100);
         for (const commit of commits) {
-          commit.changedFiles = await repo.getChangedFiles(commit.hash);
-        }
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading refs…' }));
+          commit.changedFiles = changedFilesMap.get(commit.hash) || [];
         }
 
-        // Phase 4: Get all refs (branches, tags, HEAD) in a single call
-        const refMap = await repo.getRefs();
+        if (isMounted) {
+          setState((prev) => ({ ...prev, phase: 'Loading metadata…' }));
+        }
+
+        // Phases 4, 5, 6: Run in parallel (all independent of each other)
+        const headAuthor = commits.length > 0 ? commits[0].author : 'Unknown';
+        const [refMap, workingChanges, branchInfo] = await Promise.all([
+          repo.getRefs(),
+          repo.getWorkingChanges(),
+          repo.getBranchInfo(headAuthor),
+        ]);
+
+        // Attach refs to commits
         for (const commit of commits) {
           commit.refs = refMap.get(commit.hash) || [];
         }
-
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading working changes…' }));
-        }
-
-        // Phase 5: Get working directory changes
-        const workingChanges = await repo.getWorkingChanges();
-
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading branch info…' }));
-        }
-
-        // Phase 6: Get branch information
-        const headAuthor = commits.length > 0 ? commits[0].author : 'Unknown';
-        const branchInfo = await repo.getBranchInfo(headAuthor);
 
         if (isMounted) {
           setState({

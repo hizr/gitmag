@@ -22,7 +22,7 @@ describe('useRepository', () => {
     const mockRepo = {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue([]),
-      getChangedFiles: vi.fn().mockResolvedValue([]),
+      getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map()),
       getRefs: vi.fn().mockResolvedValue(new Map()),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
       getBranchInfo: vi.fn().mockResolvedValue({
@@ -64,7 +64,7 @@ describe('useRepository', () => {
     const mockRepo = {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue(mockCommits),
-      getChangedFiles: vi.fn().mockResolvedValue([]),
+      getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map([['abc123', []]])),
       getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
       getBranchInfo: vi.fn().mockResolvedValue({
@@ -115,7 +115,7 @@ describe('useRepository', () => {
     const mockRepo = {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue([]),
-      getChangedFiles: vi.fn().mockResolvedValue([]),
+      getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map()),
       getRefs: vi.fn().mockResolvedValue(new Map()),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
       getBranchInfo: vi.fn().mockResolvedValue({
@@ -156,7 +156,7 @@ describe('useRepository', () => {
     const mockRepo = {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue(mockCommits),
-      getChangedFiles: vi.fn().mockResolvedValue([]),
+      getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map([['abc123', []]])),
       getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
       getBranchInfo: vi.fn().mockResolvedValue({

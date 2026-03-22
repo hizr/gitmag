@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
-import clipboard from 'clipboardy';
 import type {
   RepoEntry,
   CommitEntry,
@@ -14,6 +13,23 @@ import { FuzzySearchPopup } from './FuzzySearchPopup.js';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type FocusPanel = 'graph' | 'files';
+
+// ── Clipboard helpers (outside component to reduce nesting) ──────────────
+
+function handleClipboardSuccess(hash: string, setCopyStatus: (msg: string | null) => void): void {
+  setCopyStatus(`Copied ${hash} to clipboard`);
+  setTimeout(() => setCopyStatus(null), 1500);
+}
+
+function handleClipboardError(setCopyStatus: (msg: string | null) => void): void {
+  setCopyStatus('Clipboard unavailable — install wl-clipboard');
+  setTimeout(() => setCopyStatus(null), 1500);
+}
+
+function handleModuleError(setCopyStatus: (msg: string | null) => void): void {
+  setCopyStatus('Clipboard module unavailable');
+  setTimeout(() => setCopyStatus(null), 1500);
+}
 
 type FileLine = {
   status: string;
@@ -425,14 +441,20 @@ export function CommitScreen({
   // ── Copy SHA ─────────────────────────────────────────────────────────
   const copyHash = useCallback(() => {
     const hash = selectedCommit.hash;
-    clipboard.write(hash).then(
-      () => {
-        setCopyStatus(`Copied ${hash} to clipboard`);
-        setTimeout(() => setCopyStatus(null), 1500);
+    // Dynamically import clipboardy only when needed (deferred to first use)
+    import('clipboardy').then(
+      ({ default: clipboard }) => {
+        clipboard.write(hash).then(
+          () => {
+            handleClipboardSuccess(hash, setCopyStatus);
+          },
+          () => {
+            handleClipboardError(setCopyStatus);
+          }
+        );
       },
       () => {
-        setCopyStatus('Clipboard unavailable — install wl-clipboard');
-        setTimeout(() => setCopyStatus(null), 1500);
+        handleModuleError(setCopyStatus);
       }
     );
   }, [selectedCommit.hash]);

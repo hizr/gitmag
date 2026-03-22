@@ -217,6 +217,60 @@ describe('Repository Integration Tests', () => {
     expect(commits5).toEqual(commits10);
   });
 
+  it('batch-fetches changed files for all commits in one call', async () => {
+    const repo = await Repository.open(repoPath);
+
+    // Get all changed files at once using batch method
+    const changedFilesMap = await repo.getChangedFilesForAllCommits(10);
+
+    expect(changedFilesMap).toBeInstanceOf(Map);
+    expect(changedFilesMap.size).toBeGreaterThan(0);
+
+    // Verify we have entries for all commits
+    const commits = await repo.listCommits(10);
+    expect(changedFilesMap.size).toBe(commits.length);
+
+    // Verify that batch results contain expected files
+    // The batch method uses git log --name-status which correctly handles initial commits
+    // whereas getChangedFiles uses diff-tree which doesn't
+
+    // Find the initial commit (should be last in list, earliest in time)
+    const initialCommit = commits[commits.length - 1];
+    expect(initialCommit.message).toContain('initial: add README');
+
+    const initialFiles = changedFilesMap.get(initialCommit.hash) || [];
+    expect(initialFiles.some((f) => f.path === 'README.md' && f.status === 'A')).toBe(true);
+
+    // Verify other commits
+    const deleteCommit = commits[0];
+    expect(deleteCommit.message).toContain('refactor: remove math utilities');
+
+    const deletedFiles = changedFilesMap.get(deleteCommit.hash) || [];
+    expect(deletedFiles.some((f) => f.path === 'lib.ts' && f.status === 'D')).toBe(true);
+  });
+
+  it('batch method returns correct file statuses (A/M/D)', async () => {
+    const repo = await Repository.open(repoPath);
+    const changedFilesMap = await repo.getChangedFilesForAllCommits(10);
+
+    // Get commits to identify specific operations
+    const commits = await repo.listCommits(10);
+
+    // Find the commit that deleted lib.ts (should be latest/first)
+    const deleteCommit = commits[0];
+    expect(deleteCommit.message).toContain('refactor: remove math utilities');
+
+    const deletedFiles = changedFilesMap.get(deleteCommit.hash) || [];
+    expect(deletedFiles.some((f) => f.path === 'lib.ts' && f.status === 'D')).toBe(true);
+
+    // Find commit that added lib.ts (second commit)
+    const addCommit = commits[1];
+    expect(addCommit.message).toContain('feat: add math utilities');
+
+    const addedFiles = changedFilesMap.get(addCommit.hash) || [];
+    expect(addedFiles.some((f) => f.path === 'lib.ts' && f.status === 'A')).toBe(true);
+  });
+
   it('throws on non-existent directory', async () => {
     const nonExistent = path.join(tempDir, 'does-not-exist');
 
