@@ -18,7 +18,7 @@ describe('useRepository', () => {
     vi.clearAllMocks();
   });
 
-  it('returns initial loading state', () => {
+  it('returns initial loading state', async () => {
     const mockRepo = {
       getPath: () => mockRepoPath,
       listCommits: vi.fn().mockResolvedValue([]),
@@ -40,11 +40,18 @@ describe('useRepository', () => {
 
     const { result } = renderHook(() => useRepository(mockRepoPath));
 
+    // Assert synchronous initial state before the async effect settles
     expect(result.current.loading).toBe(true);
     expect(result.current.error).toBeNull();
     expect(result.current.repos).toEqual([]);
     expect(result.current.phase).toBe('Opening repository…');
     expect(result.current.repository).toBeNull();
+
+    // Drain all pending async state updates so React doesn't warn about
+    // out-of-act() updates after the test exits.
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
   });
 
   it('loads repository and commits on success', async () => {

@@ -1,50 +1,27 @@
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
-import type {
-  RepoEntry,
-  CommitEntry,
-  ChangedFile,
-  WorkingChanges,
-  BranchInfo,
-} from '../data/mockRepos.js';
+import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
 import { buildGraphLines } from '../utils/git-graph.js';
 import { FuzzySearchPopup } from './FuzzySearchPopup.js';
+import { Panel } from './common/Panel.js';
+import { GraphRow } from './commit-screen/GraphRow.js';
+import { BranchInfoPanel } from './commit-screen/BranchInfoPanel.js';
+import { CommitInfoPanel } from './commit-screen/CommitInfoPanel.js';
+import { ChangedFilesPanel } from './commit-screen/ChangedFilesPanel.js';
+import {
+  handleClipboardSuccess,
+  handleClipboardError,
+  handleModuleError,
+  buildFileLines,
+  buildInfoLines,
+  type FileLine,
+} from './commit-screen/commit-screen.utils.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type FocusPanel = 'graph' | 'files';
 
-// ── Clipboard helpers (outside component to reduce nesting) ──────────────
-
-function handleClipboardSuccess(hash: string, setCopyStatus: (msg: string | null) => void): void {
-  setCopyStatus(`Copied ${hash} to clipboard`);
-  setTimeout(() => setCopyStatus(null), 1500);
-}
-
-function handleClipboardError(setCopyStatus: (msg: string | null) => void): void {
-  setCopyStatus('Clipboard unavailable — install wl-clipboard');
-  setTimeout(() => setCopyStatus(null), 1500);
-}
-
-function handleModuleError(setCopyStatus: (msg: string | null) => void): void {
-  setCopyStatus('Clipboard module unavailable');
-  setTimeout(() => setCopyStatus(null), 1500);
-}
-
-type FileLine = {
-  status: string;
-  path: string;
-  isHeader?: boolean;
-};
-
 const FOCUS_ORDER: FocusPanel[] = ['graph', 'files'];
-
-const FILE_STATUS_COLOR: Record<string, string> = {
-  A: 'green',
-  M: 'yellow',
-  D: 'red',
-  R: 'cyan',
-};
 
 interface CommitScreenProps {
   readonly repo: RepoEntry;
@@ -58,278 +35,6 @@ interface CommitScreenProps {
     commitIdx: number
   ) => void;
   readonly workingChanges?: WorkingChanges | null;
-}
-
-// ── Panel border helper ───────────────────────────────────────────────────────
-
-interface PanelProps {
-  readonly label: string;
-  readonly focused: boolean;
-  readonly width: number;
-  readonly height: number;
-  readonly children: ReactNode;
-}
-
-function Panel({ label, focused, width, height, children }: PanelProps) {
-  const borderColor = focused ? 'cyan' : 'gray';
-  // 2 corner chars + 2 side bars = 4 reserved columns; content is inset by 1 on each side
-  const innerWidth = Math.max(width - 4, 1);
-  const innerHeight = Math.max(height - 2, 1);
-
-  const topBar = '━'.repeat(Math.max(innerWidth - label.length - 2, 0));
-  const top = `┏━ ${label} ${topBar}┓`;
-  const bottom = `┗${'━'.repeat(innerWidth + 2)}┛`;
-
-  return (
-    <Box flexDirection="column" width={width} height={height}>
-      <Text color={borderColor}>{top}</Text>
-      <Box flexDirection="row" height={innerHeight}>
-        <Text color={borderColor}> </Text>
-        <Box flexDirection="column" width={innerWidth} overflow="hidden">
-          {children}
-        </Box>
-        <Text color={borderColor}> </Text>
-      </Box>
-      <Text color={borderColor}>{bottom}</Text>
-    </Box>
-  );
-}
-
-// ── Commit row in the graph panel ─────────────────────────────────────────────
-
-interface GraphRowProps {
-  readonly prefix: string;
-  readonly commit: CommitEntry;
-  readonly selected: boolean;
-  readonly maxWidth: number;
-  readonly isMatchedResult?: boolean;
-  readonly isActiveMatch?: boolean;
-}
-
-function GraphRow({
-  prefix,
-  commit,
-  selected,
-  maxWidth,
-  isMatchedResult,
-  isActiveMatch,
-}: GraphRowProps) {
-  const HASH_W = 8; // 7 chars + 1 space
-  const metaWidth = 22; // date (10) + gap (2) + author (truncated to 10)
-
-  // Render ref badges
-  const refBadges = commit.refs.map((ref) => `[${ref}]`);
-
-  const badgeText = refBadges.length > 0 ? ' ' + refBadges.join(' ') : '';
-  const badgeWidth = badgeText.length;
-  const msgWidth = Math.max(maxWidth - prefix.length - HASH_W - metaWidth - badgeWidth - 2, 10);
-
-  // Use diamond symbol for WORKING node
-  const isWorking = commit.hash === '__WORKING__';
-  const displayHash = isWorking ? 'WORK' : commit.hash.slice(0, 7);
-  const hash = displayHash.padEnd(7);
-  const message = commit.message.slice(0, msgWidth).padEnd(msgWidth);
-  const author = commit.author.slice(0, 12).padEnd(12);
-  let bg: 'bgBlue' | 'bgGreen' | undefined;
-  if (selected) {
-    bg = 'bgBlue';
-  } else if (isActiveMatch) {
-    bg = 'bgGreen';
-  }
-
-  let matchMarker: string;
-  if (!isMatchedResult) {
-    matchMarker = ' ';
-  } else if (isActiveMatch) {
-    matchMarker = '●';
-  } else {
-    matchMarker = '○';
-  }
-
-  // Override prefix for WORKING node to show diamond
-  const displayPrefix = isWorking ? prefix.replace('●', '◆') : prefix;
-
-  // Compute background color once
-  let bgColor: 'green' | 'blue' | undefined;
-  if (bg === 'bgGreen') {
-    bgColor = 'green';
-  } else if (bg !== undefined) {
-    bgColor = 'blue';
-  }
-
-  return (
-    <Box>
-      <Text color="yellow" backgroundColor={bgColor}>
-        {displayPrefix}
-      </Text>
-      <Text color="yellow" backgroundColor={bgColor}>
-        {matchMarker}
-        {hash}{' '}
-      </Text>
-      <Text bold={selected} backgroundColor={bgColor} color={selected ? 'white' : undefined}>
-        {message}
-      </Text>
-      {/* Render ref badges with color-coding */}
-      {commit.refs.map((ref, idx) => {
-        let color: string;
-        if (ref === 'HEAD') {
-          color = 'cyan';
-        } else if (ref.startsWith('origin/')) {
-          color = 'yellow';
-        } else if (ref.startsWith('refs/tags/') || /^v?\d+\.\d+/.test(ref)) {
-          color = 'magenta';
-        } else {
-          color = 'green';
-        }
-        return (
-          <Text key={idx} color={color} bold={ref === 'HEAD'} backgroundColor={bgColor}>
-            {' ['}
-            {ref}
-            {']'}
-          </Text>
-        );
-      })}
-      <Text color="magenta" backgroundColor={bgColor}>
-        {' '}
-        {author}
-      </Text>
-      <Text color="gray" backgroundColor={bgColor}>
-        {' '}
-        {commit.date}
-      </Text>
-    </Box>
-  );
-}
-
-// ── Branch info panel ─────────────────────────────────────────────────────────
-
-interface BranchInfoPanelProps {
-  readonly branchInfo: BranchInfo | undefined;
-  readonly width: number;
-}
-
-function BranchInfoPanel({ branchInfo, width }: BranchInfoPanelProps) {
-  if (!branchInfo) {
-    return (
-      <Panel label="Branch Info" focused={false} width={width} height={5}>
-        <Text color="gray" dimColor>
-          Loading branch information…
-        </Text>
-      </Panel>
-    );
-  }
-
-  const halfWidth = Math.floor((width - 6) / 2); // Account for borders and gap
-  const leftColWidth = halfWidth;
-  const rightColWidth = width - halfWidth - 6;
-
-  // Format ahead/behind display
-  let aheadBehindStr: string;
-  if (branchInfo.remoteBranch && (branchInfo.ahead > 0 || branchInfo.behind > 0)) {
-    aheadBehindStr = `↑${branchInfo.ahead} ↓${branchInfo.behind}`;
-  } else if (branchInfo.remoteBranch) {
-    aheadBehindStr = '✓';
-  } else {
-    aheadBehindStr = '—';
-  }
-
-  // Format remote tracking display
-  const statusStr = branchInfo.remoteBranch
-    ? `${branchInfo.remoteBranch}  ${aheadBehindStr}`
-    : '(no upstream)';
-
-  return (
-    <Panel label="Branch Info" focused={false} width={width} height={5}>
-      <Box flexDirection="column">
-        <Box marginBottom={0}>
-          <Box width={leftColWidth}>
-            <Text color="cyan">Branch</Text>
-            <Text> </Text>
-            <Text bold>{branchInfo.currentBranch}</Text>
-          </Box>
-          <Box width={rightColWidth}>
-            <Text color="cyan">Path</Text>
-            <Text> </Text>
-            <Text>{branchInfo.repoPath}</Text>
-          </Box>
-        </Box>
-
-        <Box marginBottom={0}>
-          <Box width={leftColWidth}>
-            <Text color="cyan">Remote</Text>
-            <Text> </Text>
-            <Text>{statusStr}</Text>
-          </Box>
-          <Box width={rightColWidth}>
-            <Text color="cyan">Head</Text>
-            <Text> </Text>
-            <Text>{branchInfo.headAuthor}</Text>
-          </Box>
-        </Box>
-      </Box>
-    </Panel>
-  );
-}
-
-// ── Pure helpers ──────────────────────────────────────────────────────────────
-
-type InfoLine = { label: string; value: string; wrap?: boolean };
-
-function buildFileLines(commit: CommitEntry): FileLine[] {
-  if (commit.hash !== '__WORKING__') {
-    return commit.changedFiles.map((f) => ({ status: f.status, path: f.path }));
-  }
-
-  const lines: FileLine[] = [];
-  const staged = commit.changedFiles.filter(
-    (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
-  );
-  const unstaged = commit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
-  const untracked = commit.changedFiles.filter((f) => f.status === '??');
-
-  if (staged.length > 0) {
-    lines.push({ status: '📦', path: 'Staged', isHeader: true });
-    lines.push(...staged.map((f) => ({ status: f.status, path: f.path })));
-  }
-  if (unstaged.length > 0) {
-    lines.push({ status: '✎', path: 'Unstaged', isHeader: true });
-    lines.push(...unstaged.map((f) => ({ status: f.status, path: f.path })));
-  }
-  if (untracked.length > 0) {
-    lines.push({ status: '?', path: 'Untracked', isHeader: true });
-    lines.push(...untracked.map((f) => ({ status: f.status, path: f.path })));
-  }
-  return lines;
-}
-
-function buildInfoLines(commit: CommitEntry): { infoLines: InfoLine[]; bodyLines: string[] } {
-  if (commit.hash === '__WORKING__') {
-    const staged = commit.changedFiles.filter(
-      (f) => f.status !== 'M' && f.status !== 'D' && f.status !== '??'
-    );
-    const unstaged = commit.changedFiles.filter((f) => f.status === 'M' || f.status === 'D');
-    const untracked = commit.changedFiles.filter((f) => f.status === '??');
-    return {
-      infoLines: [
-        { label: 'Status ', value: 'Working directory changes' },
-        { label: 'Staged ', value: `${staged.length} file(s)` },
-        { label: 'Unstaged', value: `${unstaged.length} file(s)` },
-        { label: 'Untracked', value: `${untracked.length} file(s)` },
-      ],
-      bodyLines: [],
-    };
-  }
-
-  return {
-    infoLines: [
-      { label: 'Hash  ', value: commit.hash },
-      { label: 'Author', value: commit.author },
-      { label: 'Date  ', value: commit.date },
-      { label: 'Refs  ', value: commit.refs.length > 0 ? commit.refs.join(', ') : '—' },
-      { label: 'Message', value: commit.message, wrap: true },
-    ],
-    bodyLines: commit.body ? ['', ...commit.body.split('\n')] : [],
-  };
 }
 
 export function CommitScreen({
@@ -618,15 +323,10 @@ export function CommitScreen({
   });
 
   // ── Build info lines ─────────────────────────────────────────────────
-  const { infoLines, bodyLines } = buildInfoLines(displayCommit);
+  buildInfoLines(displayCommit); // Used by CommitInfoPanel
 
   // ── Visible slices ────────────────────────────────────────────────────
   const visibleGraph = graphLines.slice(graphScroll, graphScroll + graphInnerH);
-
-  const allInfoLines: string[] = [...infoLines.map((l) => `${l.label}  ${l.value}`), ...bodyLines];
-  const visibleInfo = allInfoLines.slice(infoScroll, infoScroll + bottomInnerH);
-
-  const visibleFiles = allFileLines.slice(filesScroll, filesScroll + bottomInnerH);
 
   // ── Footer node ────────────────────────────────────────────────────────
   let footerNode: ReactNode;
@@ -669,7 +369,7 @@ export function CommitScreen({
 
       {/* ── Branch info panel ────────────────────────────────────────── */}
       <Box marginBottom={1}>
-        <BranchInfoPanel branchInfo={repo.branchInfo} width={termCols - 2} />
+        <BranchInfoPanel branchInfo={repo.branchInfo} width={termCols - 1} />
       </Box>
 
       {/* ── Graph panel ──────────────────────────────────────────────── */}
@@ -696,7 +396,7 @@ export function CommitScreen({
               setPreviewCommitIdx(commitIdx);
             }}
             onClose={() => setSearchOpen(false)}
-            maxWidth={termCols - 2}
+            maxWidth={termCols - 1}
             maxHeight={graphHeight}
           />
         </Box>
@@ -704,7 +404,7 @@ export function CommitScreen({
         <Panel
           label="Git Graph"
           focused={focus === 'graph'}
-          width={termCols - 2}
+          width={termCols - 1}
           height={graphHeight}
         >
           {visibleGraph.map((line, i) => {
@@ -734,98 +434,24 @@ export function CommitScreen({
       {/* ── Bottom panels ────────────────────────────────────────────── */}
       <Box flexDirection="row" gap={1} marginTop={0}>
         {/* Commit info */}
-        <Panel label="Commit Info" focused={false} width={leftWidth} height={bottomHeight}>
-          {visibleInfo.map((line, i) => {
-            const isHeader = i + infoScroll < infoLines.length;
-            if (isHeader) {
-              const entry = infoLines[i + infoScroll]!;
-              // For wrappable fields like Message, use a separate layout
-              if (entry.wrap) {
-                const labelWidth = entry.label.length;
-                const availableWidth = Math.max(leftWidth - labelWidth - 5, 20); // 5 = borders + spacing
-                return (
-                  <Box key={`info-${i}`} flexDirection="column">
-                    <Box marginBottom={0}>
-                      <Text color="cyan">{entry.label}</Text>
-                      <Text color="gray"> </Text>
-                      <Box width={availableWidth} flexDirection="column">
-                        <Text wrap="wrap">{entry.value}</Text>
-                      </Box>
-                    </Box>
-                  </Box>
-                );
-              }
-              // Standard single-line layout
-              return (
-                <Box key={`info-${i}`}>
-                  <Text color="cyan">{entry.label}</Text>
-                  <Text color="gray"> </Text>
-                  <Text>{entry.value}</Text>
-                </Box>
-              );
-            }
-            return (
-              <Box key={`info-body-${i}`}>
-                <Text wrap="truncate-end">{line}</Text>
-              </Box>
-            );
-          })}
-          {Array.from({ length: Math.max(bottomInnerH - visibleInfo.length, 0) }).map((_, i) => (
-            <Text key={`empty-info-${i}`}> </Text>
-          ))}
-        </Panel>
+        <CommitInfoPanel
+          commit={displayCommit}
+          width={leftWidth}
+          height={bottomHeight}
+          infoScroll={infoScroll}
+          innerHeight={bottomInnerH}
+        />
 
         {/* Changed files */}
-        <Panel
-          label="Changed Files"
-          focused={focus === 'files'}
+        <ChangedFilesPanel
+          fileLines={allFileLines}
+          selectedFileIdx={selectedFileIdx}
+          filesScroll={filesScroll}
           width={rightWidth}
           height={bottomHeight}
-        >
-          {visibleFiles.map((f, i) => {
-            const isSelected = filesScroll + i === selectedFileIdx;
-            if (f.isHeader) {
-              // Header row for file category
-              return (
-                <Box key={`file-header-${i}`}>
-                  <Text bold color="cyan">
-                    {f.status} {f.path}
-                  </Text>
-                </Box>
-              );
-            }
-            return (
-              <Box key={`file-${i}`}>
-                <Text
-                  color={isSelected ? undefined : (FILE_STATUS_COLOR[f.status] ?? 'white')}
-                  bold={!isSelected}
-                  inverse={isSelected}
-                >
-                  {f.status}
-                </Text>
-                <Text inverse={isSelected} color={isSelected ? undefined : 'gray'}>
-                  {'  '}
-                </Text>
-                <Text inverse={isSelected} wrap="truncate-end">
-                  {f.path}
-                </Text>
-              </Box>
-            );
-          })}
-          {allFileLines.length === 0 && (
-            <Text color="gray" dimColor>
-              No changed files
-            </Text>
-          )}
-          {Array.from({
-            length: Math.max(
-              bottomInnerH - Math.max(visibleFiles.length, allFileLines.length === 0 ? 1 : 0),
-              0
-            ),
-          }).map((_, i) => (
-            <Text key={`empty-files-${i}`}> </Text>
-          ))}
-        </Panel>
+          innerHeight={bottomInnerH}
+          focused={focus === 'files'}
+        />
       </Box>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
