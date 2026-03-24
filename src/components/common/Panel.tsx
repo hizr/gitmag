@@ -33,4 +33,4 @@ function Panel({ label, focused = false, width, height, children }: PanelProps) 
   );
 }
 
-export { Panel, type PanelProps };
+export { Panel };
