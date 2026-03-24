@@ -268,9 +268,9 @@ export function CommitScreen({
   );
 
   const handleArrowInput = useCallback(
-    (input: string, key: Key, fileLines: FileLine[]) => {
-      const up = key.upArrow || input === 'k';
-      const down = key.downArrow || input === 'j';
+    (_input: string, key: Key, fileLines: FileLine[]) => {
+      const up = key.upArrow;
+      const down = key.downArrow;
       if (!up && !down) return;
       if (focus === 'graph') {
         navigateGraph(up ? 'up' : 'down');

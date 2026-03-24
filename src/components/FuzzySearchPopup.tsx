@@ -168,7 +168,7 @@ export function FuzzySearchPopup({
     }
 
     // Navigation within results
-    if (key.upArrow || input === 'k') {
+    if (key.upArrow) {
       setHighlightIdx((idx) => {
         const nextIdx = Math.max(idx - 1, 0);
         // Adjust scroll if next highlight goes above visible window
@@ -180,7 +180,7 @@ export function FuzzySearchPopup({
       return;
     }
 
-    if (key.downArrow || input === 'j') {
+    if (key.downArrow) {
       const maxIdx = Math.max(results.length - 1, 0);
       setHighlightIdx((idx) => {
         const nextIdx = Math.min(idx + 1, maxIdx);

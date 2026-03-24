@@ -121,8 +121,8 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
       return;
     }
 
-    const up = key.upArrow || input === 'k';
-    const down = key.downArrow || input === 'j';
+    const up = key.upArrow;
+    const down = key.downArrow;
 
     if (up) {
       setDiffScroll((p) => Math.max(p - 1, 0));
