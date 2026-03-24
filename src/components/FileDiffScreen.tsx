@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput, useApp } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile } from '../data/mockRepos.js';
+import { Panel } from './common/Panel.js';
 
 interface FileDiffScreenProps {
   readonly repo: RepoEntry;
@@ -8,39 +9,6 @@ interface FileDiffScreenProps {
   readonly file: ChangedFile;
   readonly getDiff: () => Promise<string>;
   readonly onBack: () => void;
-}
-
-// ── Panel border helper ───────────────────────────────────────────────────────
-
-interface PanelProps {
-  readonly label: string;
-  readonly width: number;
-  readonly height: number;
-  readonly children: ReactNode;
-}
-
-function Panel({ label, width, height, children }: PanelProps) {
-  const borderColor = 'cyan'; // Always focused
-  const innerWidth = Math.max(width - 4, 1);
-  const innerHeight = Math.max(height - 2, 1);
-
-  const topBar = '━'.repeat(Math.max(innerWidth - label.length - 2, 0));
-  const top = `┏━ ${label} ${topBar}┓`;
-  const bottom = `┗${'━'.repeat(innerWidth + 2)}┛`;
-
-  return (
-    <Box flexDirection="column" width={width} height={height}>
-      <Text color={borderColor}>{top}</Text>
-      <Box flexDirection="row" height={innerHeight}>
-        <Text color={borderColor}>{'┃'}</Text>
-        <Box flexDirection="column" width={innerWidth} overflow="hidden">
-          {children}
-        </Box>
-        <Text color={borderColor}>{'┃'}</Text>
-      </Box>
-      <Text color={borderColor}>{bottom}</Text>
-    </Box>
-  );
 }
 
 // ── Diff line renderer ────────────────────────────────────────────────────────
@@ -244,11 +212,11 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
       </Box>
 
       <Box marginBottom={1}>
-        <Text color="gray">{'─'.repeat(termCols - 2)}</Text>
+        <Text color="gray">{'─'.repeat(termCols - 1)}</Text>
       </Box>
 
       {/* ── Diff panel ────────────────────────────────────────────────── */}
-      <Panel label="File Diff" width={termCols - 2} height={panelHeight}>
+      <Panel label="File Diff" focused={true} width={termCols - 1} height={panelHeight}>
         {diffPanelContent}
       </Panel>
 
