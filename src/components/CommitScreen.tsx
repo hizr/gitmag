@@ -35,6 +35,7 @@ interface CommitScreenProps {
     commitIdx: number
   ) => void;
   readonly workingChanges?: WorkingChanges | null;
+  readonly onPickCommit?: (hash: string) => void;
 }
 
 export function CommitScreen({
@@ -44,6 +45,7 @@ export function CommitScreen({
   onBack,
   onOpenDiff,
   workingChanges,
+  onPickCommit,
 }: CommitScreenProps) {
   const { stdout } = useStdout();
   const { exit } = useApp();
@@ -286,6 +288,11 @@ export function CommitScreen({
       exit();
       return;
     }
+    if (input === 'p') {
+      onPickCommit?.(selectedCommit.hash);
+      exit();
+      return;
+    }
     if (input === 'n') {
       navigateMatch('next');
       return;
@@ -346,7 +353,7 @@ export function CommitScreen({
   } else {
     footerNode = (
       <Text color="gray" dimColor>
-        [/] search [j/k] navigate [enter] select/diff [c] copy SHA [bksp] back [q] quit
+        [/] search [j/k] navigate [enter] select/diff [c] copy SHA [p] pick [bksp] back [q] quit
       </Text>
     );
   }
