@@ -20,7 +20,11 @@ type Route =
       selectedCommitIdx: number;
     };
 
-export function App() {
+interface AppProps {
+  readonly onPickCommit?: (hash: string) => void;
+}
+
+export function App({ onPickCommit }: AppProps) {
   const [screen, setScreen] = useState<'splash' | 'router'>('splash');
   const [stack, setStack] = useState<Route[]>([]);
   const [selectedCommitIdx, setSelectedCommitIdx] = useState(0);
@@ -131,6 +135,7 @@ export function App() {
           setSelectedFileIdx(0);
         }}
         workingChanges={workingChanges}
+        onPickCommit={onPickCommit}
         onOpenDiff={(commit, file, fileIdx, commitIdx) => {
           if (repository) {
             const getDiff = () => repository.getDiff(commit.hash, file.path);
