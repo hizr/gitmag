@@ -29,13 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 """
 # Template for the footer
 footer = """
-{% for release in releases %}
+{% for release in releases -%}
   {%- if release.version -%}
-    {% if loop.index == 1 %}\
-[{{ release.version }}]: https://github.com/hizr/gitmag/releases/tag/{{ release.version }}\
-    {%- else %}\
-[{{ release.version }}]: https://github.com/hizr/gitmag/compare/{{ releases[loop.index0 + 1].version }}...{{ release.version }}\
-    {%- endif %}\
+    {% if loop.index == 1 -%}
+[{{ release.version }}]: https://github.com/hizr/gitmag/releases/tag/{{ release.version }}
+    {%- else -%}
+[{{ release.version }}]: https://github.com/hizr/gitmag/compare/{{ releases[loop.index0 + 1].version }}...{{ release.version }}
+    {%- endif %}
   {%- endif -%}
 {% endfor %}
 """
