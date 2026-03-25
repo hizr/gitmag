@@ -1,0 +1,55 @@
+[changelog]
+# Generate only the new release section
+file = "CHANGELOG.md"
+body = """
+{% if version %}\
+    ## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.breaking %}**BREAKING**: {% endif %}{{ commit.message | upper_first }}\
+          {% if commit.remote.owner %} ([\#{{ commit.id | truncate(length=7, end="") }}]({{ commit.remote.html_url }}))\
+          {%- else %} ({{ commit.id | truncate(length=7, end="") }})\
+          {%- endif %}\
+    {% endfor %}
+{% endfor %}\n
+"""
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com),
+and this project adheres to [Semantic Versioning](https://semver.org).
+"""
+footer = """
+{% for release in releases %}
+  {%- if release.version -%}
+    {% if loop.index == 1 %}\
+[{{ release.version }}]: https://github.com/hizr/gitmag/releases/tag/{{ release.version }}\
+    {%- else %}\
+[{{ release.version }}]: https://github.com/hizr/gitmag/compare/{{ releases[loop.index0 + 1].version }}...{{ release.version }}\
+    {%- endif %}\
+  {%- endif -%}
+{% endfor %}
+"""
+
+[git]
+conventional_commits = true
+filter_commits = false
+commit_parsers = [
+    { message = "^feat", group = "Added" },
+    { message = "^fix", group = "Fixed" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Changed" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^test", group = "Testing" },
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^chore", group = "Miscellaneous" },
+]
+protect_breaking_commits = false
+filter_unconventional = true
+skip_tags = "v0.1.0-rc"

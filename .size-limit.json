@@ -1,0 +1,7 @@
+[
+  {
+    "path": "dist",
+    "limit": "5 MB",
+    "name": "gitmag CLI dist"
+  }
+]

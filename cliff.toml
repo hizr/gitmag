@@ -1,0 +1,66 @@
+[changelog]
+# Changelog file name
+file = "CHANGELOG.md"
+# Template for changelog body
+body = """
+{% if version %}\
+    ## [{{ version }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [Unreleased]
+{% endif %}\
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.breaking %}**BREAKING**: {% endif %}{{ commit.message | upper_first }}\
+          {% if commit.remote.owner %} ([\#{{ commit.id | truncate(length=7, end="") }}]({{ commit.remote.html_url }}))\
+          {%- else %} ({{ commit.id | truncate(length=7, end="") }})\
+          {%- endif %}\
+    {% endfor %}
+{% endfor %}\n
+"""
+# Template for the header (version links)
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com),
+and this project adheres to [Semantic Versioning](https://semver.org).
+"""
+# Template for the footer
+footer = """
+{% for release in releases %}
+  {%- if release.version -%}
+    {% if loop.index == 1 %}\
+[{{ release.version }}]: https://github.com/hizr/gitmag/releases/tag/{{ release.version }}\
+    {%- else %}\
+[{{ release.version }}]: https://github.com/hizr/gitmag/compare/{{ releases[loop.index0 + 1].version }}...{{ release.version }}\
+    {%- endif %}\
+  {%- endif -%}
+{% endfor %}
+"""
+
+[git]
+# Parse commits as conventional commits
+conventional_commits = true
+# Filter commits by type
+filter_commits = false
+# Split commits into groups
+commit_parsers = [
+    { message = "^feat", group = "Added" },
+    { message = "^fix", group = "Fixed" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Changed" },
+    { message = "^docs", group = "Documentation" },
+    { message = "^test", group = "Testing" },
+    { message = "^chore\\(release\\)", skip = true },
+    { message = "^chore", group = "Miscellaneous" },
+]
+# Protect specific commit groups
+protect_breaking_commits = false
+# Filter commits by pattern
+filter_unconventional = true
+# Tags to skip when generating changelog
+skip_tags = "v0.1.0-rc"
+# Tidy tags (remove prefix for comparison)
+tidy_tags = false

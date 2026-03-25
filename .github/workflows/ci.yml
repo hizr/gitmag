@@ -38,8 +38,8 @@ jobs:
       - name: Dependency vulnerability audit
         run: npm run audit
 
-      - name: Run tests
-        run: npm test
+      - name: Run tests with coverage enforcement
+        run: npm test -- --coverage --coverage.lines=80 --coverage.branches=80 --coverage.functions=80 --coverage.statements=80
 
   build:
     name: Build

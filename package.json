@@ -15,18 +15,10 @@
     "test": "vitest run",
     "dead-code": "knip",
     "duplication": "jscpd src --min-tokens 80 --threshold 0",
-    "audit": "npm audit --audit-level=high"
-  },
-  "knip": {
-    "entry": [
-      "src/cli.ts"
-    ],
-    "project": [
-      "src/**/*.{ts,tsx}"
-    ],
-    "ignoreDependencies": [
-      "ecc-universal"
-    ]
+    "audit": "npm audit --audit-level=high",
+    "version": "npm run build && npx git-cliff -o CHANGELOG.md --config cliff.toml && git add CHANGELOG.md",
+    "preversion": "npm run test && npm run lint && npm run build",
+    "postversion": "git push origin main --tags"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

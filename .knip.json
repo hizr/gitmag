@@ -1,0 +1,6 @@
+{
+  "entry": ["src/cli.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreDependencies": ["ecc-universal"],
+  "ignoreBinaries": ["git-cliff"]
+}
