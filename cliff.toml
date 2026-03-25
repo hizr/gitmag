@@ -12,7 +12,7 @@ body = """
     ### {{ group | upper_first }}
     {% for commit in commits %}
         - {% if commit.breaking %}**BREAKING**: {% endif %}{{ commit.message | upper_first }}\
-          {% if commit.remote.owner %} ([\#{{ commit.id | truncate(length=7, end="") }}]({{ commit.remote.html_url }}))\
+          {% if commit.remote.owner %} ([#{{ commit.id | truncate(length=7, end="") }}]({{ commit.remote.html_url }}))\
           {%- else %} ({{ commit.id | truncate(length=7, end="") }})\
           {%- endif %}\
     {% endfor %}
