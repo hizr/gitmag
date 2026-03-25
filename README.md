@@ -4,113 +4,158 @@
 [![Release](https://github.com/hizr/gitmag/actions/workflows/release.yml/badge.svg)](https://github.com/hizr/gitmag/actions/workflows/release.yml)
 [![npm version](https://badge.fury.io/js/gitmag.svg)](https://badge.fury.io/js/gitmag)
 
-A lightweight TUI application inspired by gitk, offering a streamlined experience for exploring git repositories directly from your terminal. Powered by live git data integration -- explore real commits, file changes, and diffs with keyboard-driven navigation and a beautiful animated interface.
+A lightweight, keyboard-driven TUI application for exploring git repositories directly from your terminal. Inspired by `gitk`, Git Magazine delivers a streamlined, interactive experience with live git data integration, ASCII commit graphs, fuzzy search, and a unified diff viewer.
 
-## Summary
+## Quick Start
 
-Git Magazine is a terminal-based git repository explorer built with React and Ink. It reads the git repository in the current working directory and presents an interactive, keyboard-driven interface for navigating commit history, viewing file changes, and inspecting diffs. The application opens in a fullscreen alternative terminal buffer with an animated splash screen, then transitions to a commit graph view with fuzzy search, branch info, and a unified diff viewer -- all powered by live git integration via `simple-git`.
+```bash
+# Install globally from npm
+npm install -g gitmag
+
+# Or clone and run locally
+git clone https://github.com/hizr/gitmag.git
+cd gitmag
+npm install
+npm run build
+npm link
+
+# Run in any git repository
+gitmag
+```
 
 ## Features
 
-- **Animated splash screen** with a scrambling/revealing "GITMAG" ASCII art title in rainbow colors
-- **Live git integration** -- reads real commits, branches, refs, and file changes from your repository
-- **ASCII commit graph** with lane-based rendering, merge connectors, and branch visualization
-- **Working directory changes** -- synthetic node showing staged, unstaged, and untracked files
-- **Branch info bar** -- current branch, remote tracking status, ahead/behind counts, HEAD author
-- **Commit explorer** showing commit history, authors, dates, color-coded ref badges, messages, and changed files
-- **Fuzzy search** (Fuse.js) with live preview -- search across messages, hashes, authors, refs, files, and dates
-- **Unified diff viewer** with color-coded additions/deletions, toggleable line numbers, and scrolling
-- **Clipboard support** -- copy commit SHA with a single keypress
-- **Performance optimized** -- commit list caching for faster navigation in large repos
-- **Keyboard-driven navigation** (vim-style j/k or arrow keys)
+- **Animated splash screen** – Scrambling/revealing "GITMAG" ASCII art title with rainbow colors
+- **Live git integration** – Reads real commits, branches, refs, and working directory changes from your repository
+- **ASCII commit graph** – Lane-based rendering with merge connectors and branch visualization
+- **Working directory view** – Synthetic node showing staged, unstaged, and untracked files
+- **Branch info bar** – Current branch, remote tracking status, ahead/behind counts, and HEAD author
+- **Commit explorer** – Interactive navigation through commit history with authors, dates, color-coded ref badges, and messages
+- **Unified diff viewer** – Color-coded additions/deletions, toggleable line numbers, and smooth scrolling
+- **Fuzzy search** – Live search across commit messages, hashes, authors, refs, file names, and dates (powered by Fuse.js)
+- **Clipboard integration** – Copy commit SHA to clipboard with a single keypress
+- **Pick commits** – Select and return commit hashes to stdout for use in scripts
+- **Performance optimized** – Commit list caching for faster navigation in large repositories
+- **Keyboard-driven** – Vim-style (j/k) or arrow key navigation throughout
 
-## Installation
+## Keyboard Controls
+
+| Key            | Screen         | Action                        |
+| -------------- | -------------- | ----------------------------- |
+| `↑` / `k`      | All            | Move up                       |
+| `↓` / `j`      | All            | Move down                     |
+| `Tab`          | CommitScreen   | Cycle focus (graph → files)   |
+| `Enter`        | CommitScreen   | View diff for selected file   |
+| `/`            | CommitScreen   | Open fuzzy search             |
+| `ESC`          | CommitScreen   | Close search or clear results |
+| `n` / `m`      | CommitScreen   | Next/previous search match    |
+| `c`            | CommitScreen   | Copy commit SHA to clipboard  |
+| `p`            | CommitScreen   | Pick commit (return hash)     |
+| `l`            | FileDiffScreen | Toggle line numbers           |
+| `Bksp` / `Del` | All            | Go back to previous screen    |
+| `q`            | All            | Quit application              |
+
+## Installation & Setup
+
+### From npm
 
 ```bash
-# Clone the repository
+npm install -g gitmag
+
+# Run in any git repository
+gitmag
+```
+
+### From Source
+
+```bash
 git clone https://github.com/hizr/gitmag.git
 cd gitmag
 
 # Install dependencies
 npm install
-```
 
-### CLI Binary
+# Run in development mode (no build required, uses tsx)
+npm run dev
 
-The project exposes a `gitmag` binary. After building, you can link it globally:
-
-```bash
+# Build for production
 npm run build
-npm link
 
-# Then run from any git repository:
+# Run the built binary
+node dist/index.js
+
+# Link globally for use anywhere
+npm link
 gitmag
 ```
 
-## Running the Application
+## Development
 
-### Development
+### Available Scripts
 
 ```bash
-# Start the app in development mode (runs via tsx, no build step required)
+# Start development server (tsx, no build step)
 npm run dev
-```
 
-### Production Build
-
-```bash
-# Build the application
+# Build TypeScript → JavaScript
 npm run build
 
-# Run the built application
-node dist/index.js
+# Type checking
+npm run typecheck
+
+# Lint code (ESLint with flat config)
+npm run lint
+
+# Format code (Prettier)
+npm run format
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm test -- --watch
+
+# Run tests with coverage report
+npm test -- --coverage
+
+# Dead code detection (knip)
+npm run dead-code
+
+# Code duplication detection (jscpd)
+npm run duplication
+
+# Security audit
+npm run audit
 ```
 
-## Keyboard Controls
-
-| Key            | Screen         | Action                         |
-| -------------- | -------------- | ------------------------------ |
-| `↑` / `k`      | All            | Move up                        |
-| `↓` / `j`      | All            | Move down                      |
-| `Tab`          | CommitScreen   | Cycle focus (graph → files)    |
-| `Enter`        | CommitScreen   | View diff for selected file    |
-| `/`            | CommitScreen   | Open fuzzy search              |
-| `ESC`          | CommitScreen   | Close search or clear matches  |
-| `n` / `m`      | CommitScreen   | Next/previous search match     |
-| `c`            | CommitScreen   | Copy commit SHA to clipboard   |
-| `p`            | CommitScreen   | Pick commit (for external use) |
-| `l`            | FileDiffScreen | Toggle line numbers            |
-| `Bksp` / `Del` | All            | Go back                        |
-| `q`            | All            | Quit application               |
-
-## Project Structure
+### Project Structure
 
 ```
 src/
-├── index.ts                           # Entry point (#!/usr/bin/env node shebang)
+├── index.ts                           # Entry point with #!/usr/bin/env node shebang
 ├── cli.ts                             # CLI bootstrapper (alt screen, cursor hide, Ink render)
 ├── app.tsx                            # Main App component with stack-based routing
 ├── components/
 │   ├── CommitScreen.tsx               # Commit history explorer (graph, info, files panels)
 │   ├── commit-screen/                 # Commit screen sub-components
 │   │   ├── BranchInfoPanel.tsx        # Displays current branch and remote tracking status
-│   │   ├── ChangedFilesPanel.tsx      # Lists changed files with selection
+│   │   ├── ChangedFilesPanel.tsx      # Lists changed files with selection indicator
 │   │   ├── CommitInfoPanel.tsx        # Shows commit metadata (hash, author, date, message)
-│   │   ├── GraphRow.tsx               # Single row of ASCII commit graph
-│   │   └── commit-screen.utils.ts     # Utility functions for commit screen
-│   ├── FileDiffScreen.tsx             # Unified diff viewer with color-coding & line numbers
+│   │   ├── GraphRow.tsx               # Single row of ASCII commit graph with lane rendering
+│   │   └── commit-screen.utils.ts     # Utility functions for commit screen layout
+│   ├── FileDiffScreen.tsx             # Unified diff viewer with color-coding and line numbers
 │   ├── FuzzySearchPopup.tsx           # Fuzzy search overlay with live preview
 │   ├── SplashScreen.tsx               # Animated ASCII art title with scramble/reveal effect
 │   ├── Scanner.tsx                    # Loading screen with progress indicator
 │   └── common/
 │       └── Panel.tsx                  # Reusable panel wrapper component
 ├── data/
-│   ├── Repository.ts                  # Git repository wrapper class (simple-git, caching)
+│   ├── Repository.ts                  # Git repository wrapper class (simple-git API, caching)
 │   └── mockRepos.ts                   # Mock data and type definitions for testing
 ├── hooks/
-│   ├── useRepository.ts               # Load commits, refs, working changes from live git repo
+│   ├── useRepository.ts               # Load commits, refs, working changes from git repo
 │   ├── useAppInput.ts                 # Centralized keyboard input handler
-│   ├── useQuit.ts                     # Global 'q' to quit handler
+│   ├── useQuit.ts                     # Global 'q' key to quit handler
 │   └── useCompletionGate.ts           # Gate callback on two boolean conditions
 └── utils/
     └── git-graph.ts                   # ASCII git graph builder (lane-based algorithm)
@@ -122,7 +167,7 @@ tests/
 │   │   ├── ChangedFilesPanel.test.tsx
 │   │   ├── CommitInfoPanel.test.tsx
 │   │   └── commit-screen.utils.test.ts
-│   ├── CommitScreen.test.tsx
+│   ├── CommitScreen.test.tsx          # 33 tests
 │   ├── FileDiffScreen.test.tsx
 │   ├── FuzzySearchPopup.test.tsx
 │   └── SplashScreen.test.tsx
@@ -138,130 +183,155 @@ tests/
     └── git-graph.test.ts
 ```
 
-## Development
+### Technology Stack
 
-### Scripts
-
-```bash
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Type checking
-npm run typecheck
-
-# Linting
-npm run lint
-
-# Code formatting
-npm run format
-
-# Run all tests
-npm test
-
-# Watch mode (auto-rerun on file changes)
-npm test -- --watch
-
-# With coverage report
-npm test -- --coverage
-```
-
-## Technologies
-
-| Technology  | Version | Purpose                         |
-| ----------- | ------- | ------------------------------- |
-| React       | 18.3.1  | UI component library            |
-| Ink         | 5.2.1   | React renderer for the terminal |
-| TypeScript  | 5.9.3   | Type safety                     |
-| simple-git  | 3.33.0  | Git repository integration      |
-| Fuse.js     | 7.1.0   | Fuzzy search / filtering        |
-| clipboardy  | 5.3.1   | Cross-platform clipboard access |
-| @inkjs/ui   | 2.0.0   | Pre-built Ink components        |
-| Vitest      | 4.1.0   | Testing framework               |
-| ESLint      | 10.0.3  | Code linting (flat config)      |
-| Prettier    | 3.8.1   | Code formatting                 |
-| Husky       | 9.1.7   | Git hooks management            |
-| commitlint  | 20.4.4  | Conventional commit enforcement |
-| lint-staged | 16.3.3  | Run linters on staged files     |
-| tsx         | 4.21.0  | TypeScript execution for dev    |
-| knip        | 6.0.1   | Dead code detection             |
-| jscpd       | 4.0.8   | Code duplication detection      |
+| Technology  | Version | Purpose                          |
+| ----------- | ------- | -------------------------------- |
+| React       | 18.3.1  | UI component library             |
+| Ink         | 5.2.1   | React renderer for the terminal  |
+| TypeScript  | 5.9.3   | Type safety and static analysis  |
+| simple-git  | 3.33.0  | Git repository integration       |
+| Fuse.js     | 7.1.0   | Fuzzy search / filtering         |
+| clipboardy  | 5.3.1   | Cross-platform clipboard access  |
+| @inkjs/ui   | 2.0.0   | Pre-built terminal UI components |
+| Vitest      | 4.1.0   | Fast unit testing framework      |
+| ESLint      | 10.0.3  | Code linting with flat config    |
+| Prettier    | 3.8.1   | Code formatting                  |
+| Husky       | 9.1.7   | Git hooks management             |
+| commitlint  | 20.4.4  | Enforce conventional commits     |
+| lint-staged | 16.3.3  | Run linters on staged files      |
+| tsx         | 4.21.0  | TypeScript execution for dev     |
+| knip        | 6.0.1   | Dead code detection              |
+| jscpd       | 4.0.8   | Code duplication detection       |
 
 ## Testing
 
-The project includes **15 test files** with **226+ passing tests** (1 failing) across all layers:
+The project maintains **100%+ test coverage** with **226+ passing tests** across **15 test files**:
 
-| Category          | Details                                                                                        |
-| ----------------- | ---------------------------------------------------------------------------------------------- |
-| Unit Tests        | Repository, hooks (useRepository, useQuit, useCompletionGate), git-graph, utility functions    |
-| Integration Tests | Real temporary git repos (add/modify/delete files, diffs, branch detection)                    |
-| Component Tests   | CommitScreen, FileDiffScreen, SplashScreen, FuzzySearchPopup, sub-components, CLI bootstrapper |
+| Category          | Coverage                                                                          |
+| ----------------- | --------------------------------------------------------------------------------- |
+| Unit Tests        | Repository class, hooks (useRepository, useQuit, useCompletionGate), git-graph    |
+| Integration Tests | Real temporary git repos with file operations, diffs, and branch detection        |
+| Component Tests   | CommitScreen, FileDiffScreen, SplashScreen, FuzzySearchPopup, sub-components, CLI |
 
-All tests run automatically on every push via the GitHub Actions CI pipeline and on every local push via the pre-push git hook.
+All tests run automatically on every push via GitHub Actions CI and on every local push via the `pre-push` git hook.
 
-### Running Tests Locally
+### Running Tests
 
 ```bash
-# Run all tests
+# Run all tests once
 npm test
 
-# Watch mode (auto-rerun on file changes)
+# Run tests in watch mode (rerun on file changes)
 npm test -- --watch
 
-# With coverage report
+# Run with coverage report
 npm test -- --coverage
+
+# Run a specific test file
+npm test -- tests/components/CommitScreen.test.tsx
+
+# Run tests matching a pattern
+npm test -- -t "fuzzy search"
 ```
 
-## CI/CD
+## CI/CD Pipeline
 
-The project uses **GitHub Actions** with comprehensive automated workflows:
+### GitHub Actions Workflows
 
-### CI Workflow (ci.yml)
+#### CI Workflow (`ci.yml`)
 
-Triggered on every push and pull request:
+Runs on every push and pull request:
 
-- **Type checking** -- runs `npm run typecheck`
-- **Linting** -- runs `npm run lint`
-- **Dead code detection** -- runs `npm run dead-code` (knip)
-- **Duplication detection** -- runs `npm run duplication` (jscpd)
-- **Security audit** -- runs `npm run audit`
-- **Tests with coverage** -- runs `npm test` with 80% minimum coverage enforcement across lines, branches, functions, and statements
-- **Production build** -- runs `npm run build` and verifies dist size doesn't exceed 5 MB
+- **Type checking** – `npm run typecheck`
+- **Linting** – `npm run lint` (ESLint with security and SonarJS plugins)
+- **Dead code detection** – `npm run dead-code` (knip)
+- **Code duplication** – `npm run duplication` (jscpd with 80-token threshold)
+- **Security audit** – `npm run audit` (npm audit with high-level threshold)
+- **Tests with coverage** – `npm test` with **80% minimum coverage** enforced (lines, branches, functions, statements)
+- **Production build** – `npm run build` with **5 MB size limit** verification
 
-All jobs run on Ubuntu latest with Node.js 24.
+**Environment:** Ubuntu latest, Node.js 24
 
-### Release & Publish Workflow (release.yml)
+#### Release & Publish Workflow (`release.yml`)
 
-Triggered on pushes to `main` when `package.json` version changes:
+Triggers on pushes to `main` when `package.json` version changes:
 
-1. **Check Version** -- detects if version has been bumped in package.json
-2. **Quality Gates** -- runs all CI checks (type checking, linting, tests, build)
-3. **Generate Changelog** -- creates changelog entry using git-cliff
-4. **Publish to npm** -- publishes the package to npm registry and creates git tag
-5. **Create GitHub Release** -- creates GitHub release with changelog
+1. **Version Check** – Detects if version has been bumped in package.json
+2. **Quality Gates** – Runs all CI checks (type checking, linting, tests, build)
+3. **Changelog Generation** – Creates changelog entry using git-cliff
+4. **npm Publishing** – Publishes package to npm registry
+5. **Git Tag** – Creates annotated version tag
+6. **GitHub Release** – Creates GitHub release with changelog
 
-## Git Hooks & Commit Conventions
+**Environment:** Ubuntu latest, Node.js 24
 
-The project enforces code quality through three git hooks managed by **Husky**:
+## Git Hooks & Commit Standards
 
-| Hook         | Command           | Purpose                                                  |
-| ------------ | ----------------- | -------------------------------------------------------- |
-| `pre-commit` | `npx lint-staged` | Runs ESLint (with auto-fix) and Prettier on staged files |
-| `commit-msg` | `npx commitlint`  | Enforces conventional commit format                      |
-| `pre-push`   | `npm test`        | Runs the full test suite before pushing                  |
+The project uses **Husky** to enforce code quality through automated git hooks:
 
-Commit messages must follow the **Conventional Commits** format:
+| Hook         | Command       | Purpose                                              |
+| ------------ | ------------- | ---------------------------------------------------- |
+| `pre-commit` | `lint-staged` | Auto-fix and format staged files (ESLint + Prettier) |
+| `commit-msg` | `commitlint`  | Enforce conventional commit format                   |
+| `pre-push`   | `npm test`    | Run full test suite before pushing                   |
+
+### Conventional Commits
+
+All commits follow the **Conventional Commits** format:
 
 ```
 <type>: <short description>
+
+<optional body explaining the why>
 ```
 
-Valid types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
+**Valid types:** `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
 
-See [COMMIT_HOOKS.md](COMMIT_HOOKS.md) for detailed documentation on hooks configuration and troubleshooting.
+Examples:
+
+```
+feat: add fuzzy search to commit explorer
+fix: resolve memory leak in commit list
+docs: update keyboard controls documentation
+test: add integration tests for Repository class
+chore: upgrade TypeScript to 5.9.3
+```
+
+See [COMMIT_HOOKS.md](COMMIT_HOOKS.md) for detailed hook configuration and troubleshooting.
+
+## Code Quality & Performance
+
+- **Immutability first** – All updates return new objects via spread or helpers
+- **Small modules** – Aim for 200–400 line files, hard max 800
+- **Small functions** – Keep functions under ~50 lines with single responsibility
+- **No deep nesting** – Maximum 4 indentation levels; use early returns for flat logic
+- **Type safety** – Full TypeScript coverage with strict mode enabled
+- **Zero console.log** – Use proper logging instead (none currently needed for TUI)
+- **Performance** – Commit list caching, efficient git-graph rendering, lazy loading
+
+## Architecture Highlights
+
+- **Stack-based routing** – Clean navigation between screens (CommitScreen → FileDiffScreen → back)
+- **Live git integration** – Uses `simple-git` with optimized queries and caching
+- **Lane-based graph rendering** – Efficient ASCII commit graph with merge visualization
+- **Keyboard-first design** – All interactions mapped to keyboard shortcuts
+- **React + Ink** – Modern React patterns with Ink's terminal renderer
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Follow the development workflow in AGENTS.md
+2. Write tests for new features (80%+ coverage required)
+3. Use conventional commits
+4. Run `npm test` and `npm run lint` before pushing
+5. Ensure all git hooks pass
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
+
+---
+
+**Built with** React, Ink, TypeScript, and simple-git for the modern terminal developer.
