@@ -36,14 +36,13 @@ gitmag
 - **Clipboard integration** – Copy commit SHA to clipboard with a single keypress
 - **Pick commits** – Select and return commit hashes to stdout for use in scripts
 - **Performance optimized** – Commit list caching for faster navigation in large repositories
-- **Keyboard-driven** – Vim-style (j/k) or arrow key navigation throughout
 
 ## Keyboard Controls
 
 | Key            | Screen         | Action                        |
 | -------------- | -------------- | ----------------------------- |
-| `↑` / `k`      | All            | Move up                       |
-| `↓` / `j`      | All            | Move down                     |
+| `↑`            | All            | Move up                       |
+| `↓`            | All            | Move down                     |
 | `Tab`          | CommitScreen   | Cycle focus (graph → files)   |
 | `Enter`        | CommitScreen   | View diff for selected file   |
 | `/`            | CommitScreen   | Open fuzzy search             |
