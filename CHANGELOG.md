@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
-## [Unreleased]
+## [v0.2.0] - 2026-03-25
 
 ### Documentation
 
@@ -134,4 +134,4 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 - Update panel border formatting in RepoScreen (cf25603)
 
-[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
+[v0.2.0]: https://github.com/hizr/gitmag/releases/tag/v0.2.0[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
