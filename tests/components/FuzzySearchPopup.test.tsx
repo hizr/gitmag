@@ -4,6 +4,7 @@ import { FuzzySearchPopup } from '../../src/components/FuzzySearchPopup.js';
 import type { CommitEntry } from '../../src/data/mockRepos.js';
 
 // Mock useInput to capture handlers
+/* eslint-disable @typescript-eslint/no-explicit-any */
 vi.mock('ink', async () => {
   const actual = await vi.importActual('ink');
   const useInputHandler: ((input: string, key: any) => void)[] = [];
@@ -16,6 +17,7 @@ vi.mock('ink', async () => {
     __useInputHandler: useInputHandler,
   };
 });
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 function createMockCommit(overrides?: Partial<CommitEntry>): CommitEntry {
   return {
@@ -73,6 +75,7 @@ describe('FuzzySearchPopup', () => {
     );
 
     const ink = await import('ink');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handlers = (ink as any).__useInputHandler as ((input: string, key: any) => void)[];
 
     expect(Array.isArray(handlers)).toBe(true);
@@ -150,7 +153,9 @@ describe('FuzzySearchPopup', () => {
     );
 
     // Use the mocked ink.useInput handler to simulate pressing Return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const inkModule: any = await import('ink');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handlers: ((input: string, key: any) => void)[] = inkModule.__useInputHandler || [];
     const handler = handlers[handlers.length - 1];
 
@@ -179,6 +184,7 @@ describe('FuzzySearchPopup', () => {
 
     // Simulate pressing the Escape key via the captured useInput handler
     const ink = await import('ink');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handlers = (ink as any).__useInputHandler as ((input: string, key: any) => void)[];
     const handler = handlers[handlers.length - 1];
     handler('', { escape: true });

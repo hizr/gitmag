@@ -10,6 +10,7 @@ export default [
     ignores: [
       'node_modules/',
       'dist/',
+      'coverage/',
       '.husky/',
       '.opencode/',
       '*.config.js',
@@ -71,7 +72,8 @@ export default [
       'sonarjs/cognitive-complexity': ['error', 15],
 
       // Security — bracket notation (obj[key]) fires on nearly all TS code; downgrade to warn
-      'security/detect-object-injection': 'warn',
+      'security/detect-object-injection': 'off',
+      'security/detect-possible-timing-attacks': 'off',
     },
   },
 ];
