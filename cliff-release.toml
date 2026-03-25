@@ -10,10 +10,7 @@ body = """
 {% for group, commits in commits | group_by(attribute="group") %}
     ### {{ group | upper_first }}
     {% for commit in commits %}
-        - {% if commit.breaking %}**BREAKING**: {% endif %}{{ commit.message | upper_first }}\
-          {% if commit.remote.owner %} ([\#{{ commit.id | truncate(length=7, end="") }}]({{ commit.remote.html_url }}))\
-          {%- else %} ({{ commit.id | truncate(length=7, end="") }})\
-          {%- endif %}\
+        - {% if commit.breaking %}**BREAKING**: {% endif %}{{ commit.message | upper_first }}
     {% endfor %}
 {% endfor %}\n
 """
@@ -26,14 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 """
 footer = """
-{% for release in releases %}
-  {%- if release.version -%}
-    {% if loop.index == 1 %}\
-[{{ release.version }}]: https://github.com/hizr/gitmag/releases/tag/{{ release.version }}\
-    {%- else %}\
-[{{ release.version }}]: https://github.com/hizr/gitmag/compare/{{ releases[loop.index0 + 1].version }}...{{ release.version }}\
-    {%- endif %}\
-  {%- endif -%}
+{% for release in releases -%}
+{%- if release.version -%}
+[{{ release.version }}]: https://github.com/hizr/gitmag/releases/tag/{{ release.version }}
+{%- endif -%}
 {% endfor %}
 """
 
