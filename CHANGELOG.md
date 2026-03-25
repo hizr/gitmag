@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
+## [Unreleased]
+
+### Fixed
+
+- Remove redundant tag push from publish job (e00030a)
+
 ## [v0.2.2] - 2026-03-25
 
 ### Fixed
