@@ -16,10 +16,9 @@
     "dead-code": "knip",
     "duplication": "jscpd src --min-tokens 80 --threshold 0",
     "audit": "npm audit --audit-level=high",
-    "verion": "npm run version",
     "version": "npm run build && npx git-cliff -o CHANGELOG.md --config cliff.toml && git add CHANGELOG.md",
     "preversion": "npm run test && npm run lint && npm run build",
-    "postversion": "git push origin main --tags"
+    "postversion": "git push --follow-tags"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
