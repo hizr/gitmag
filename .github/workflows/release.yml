@@ -152,9 +152,6 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Push tag to GitHub
-        run: git push origin v${{ needs.check-version.outputs.new-version }}
-
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
