@@ -224,7 +224,7 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
       <Box marginTop={0}>
         <Box flexGrow={1}>
           <Text color="gray" dimColor>
-            [j/k] scroll [l] toggle line# [bksp] back [q] quit
+            [up/down] scroll [l] toggle line# [bksp/del] back [q] quit
           </Text>
         </Box>
         <Text color="gray" dimColor>

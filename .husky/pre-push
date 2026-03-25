@@ -1,1 +1,1 @@
-npm run dead-code && npm run duplication && npm run audit && npm test
+npm run dead-code && npm run duplication && npm run audit && npm test -- --coverage --coverage.lines=80 --coverage.branches=80 --coverage.functions=80 --coverage.statements=80

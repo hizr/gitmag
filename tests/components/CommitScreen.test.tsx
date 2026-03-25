@@ -349,10 +349,10 @@ describe('CommitScreen', () => {
     const output = lastFrame();
     if (!output) throw new Error('lastFrame() returned undefined');
 
-    // Verify the order: [c] copy SHA ... [p] pick ... [bksp] back
+    // Verify the order: [c] copy SHA ... [p] pick ... [bksp/del] back
     const cIndex = output.indexOf('[c]');
     const pIndex = output.indexOf('[p]');
-    const bkspIndex = output.indexOf('[bksp]');
+    const bkspIndex = output.indexOf('[bksp/del]');
 
     expect(cIndex).toBeGreaterThanOrEqual(0);
     expect(pIndex).toBeGreaterThanOrEqual(0);

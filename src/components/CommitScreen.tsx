@@ -346,14 +346,15 @@ export function CommitScreen({
   } else if (matchIndices.length > 0) {
     footerNode = (
       <Text color="gray" dimColor>
-        [n/m] next/prev match ({matchIndices.length} results) [/] new search [ESC] clear [j/k]
+        [n/m] next/prev match ({matchIndices.length} results) [/] new search [ESC] clear [up/down]
         navigate [q] quit
       </Text>
     );
   } else {
     footerNode = (
       <Text color="gray" dimColor>
-        [/] search [j/k] navigate [enter] select/diff [c] copy SHA [p] pick [bksp] back [q] quit
+        [/] search [up/down] navigate [enter] select/diff [c] copy SHA [p] pick [bksp/del] back [q]
+        quit
       </Text>
     );
   }

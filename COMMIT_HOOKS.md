@@ -25,26 +25,30 @@ Enforces **Conventional Commits** format:
 - Format: `<type>: <description>` (e.g., `feat: add user authentication`)
 - Commit message lint fails → commit is rejected
 
-### Pre-Push Hook (`npm test`)
+### Pre-Push Hook (npm test with 80% coverage)
 
-Runs the full test suite before pushing:
+Runs the full test suite with enforced coverage thresholds before pushing:
 
-- Command: `npm test` (runs `vitest run`)
-- Test suite must pass → push is blocked on failure
-- Catches regressions early before they reach the remote
+- Command: `npm test -- --coverage --coverage.lines=80 --coverage.branches=80 --coverage.functions=80 --coverage.statements=80`
+- Runs `vitest run` with coverage collection and enforcement
+- **Coverage thresholds**: 80% minimum for lines, branches, functions, and statements
+- Test suite must pass AND coverage thresholds must be met → push is blocked on failure
+- Catches regressions and coverage gaps early before they reach the remote
 
 ## File Structure
 
 ```
 .husky/                    # Husky hook directory
-├── pre-commit            # Runs lint-staged
-├── commit-msg            # Runs commitlint
-└── pre-push              # Runs npm test
+├── pre-commit            # Runs lint-staged (ESLint + Prettier on staged files)
+├── commit-msg            # Runs commitlint (Conventional Commits enforcement)
+└── pre-push              # Runs tests with 80% coverage enforcement
 
-eslint.config.js          # ESLint flat config (TypeScript + Prettier)
+eslint.config.js          # ESLint flat config (TypeScript + security rules)
 .prettierrc.json          # Prettier formatting config
 commitlint.config.js      # Commitlint config (Conventional Commits)
+.lint-staged              # lint-staged config (runs linters on staged files)
 tsconfig.json             # TypeScript config
+vitest.config.ts          # Vitest test runner config
 ```
 
 ## Usage
@@ -115,15 +119,18 @@ git commit -m "added feature"
 git commit -m "feat: add feature"
 ```
 
-### Pre-push hook fails → tests didn't pass
+### Pre-push hook fails → tests didn't pass or coverage is below 80%
 
-Fix the failing tests and try pushing again:
+Fix the failing tests and ensure coverage meets the 80% threshold:
 
 ```bash
-npm test              # Run tests to debug
-npm run typecheck     # Check for type errors
+npm test -- --coverage      # Run tests with coverage report
+npm run typecheck           # Check for type errors
+npm test                    # Run tests again to verify fixes
 git push
 ```
+
+If coverage is below 80%, add more tests to increase coverage until all thresholds are met.
 
 ## Configuration References
 

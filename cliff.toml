@@ -12,7 +12,7 @@ body = """
     ### {{ group | upper_first }}
     {% for commit in commits %}
         - {% if commit.breaking %}**BREAKING**: {% endif %}{{ commit.message | upper_first }}\
-          {% if commit.remote.owner %} ([\#{{ commit.id | truncate(length=7, end="") }}]({{ commit.remote.html_url }}))\
+          {% if commit.remote.owner %} ([#{{ commit.id | truncate(length=7, end="") }}]({{ commit.remote.html_url }}))\
           {%- else %} ({{ commit.id | truncate(length=7, end="") }})\
           {%- endif %}\
     {% endfor %}
@@ -29,13 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 """
 # Template for the footer
 footer = """
-{% for release in releases %}
+{% for release in releases -%}
   {%- if release.version -%}
-    {% if loop.index == 1 %}\
-[{{ release.version }}]: https://github.com/hizr/gitmag/releases/tag/{{ release.version }}\
-    {%- else %}\
-[{{ release.version }}]: https://github.com/hizr/gitmag/compare/{{ releases[loop.index0 + 1].version }}...{{ release.version }}\
-    {%- endif %}\
+[{{ release.version }}]: https://github.com/hizr/gitmag/releases/tag/{{ release.version }}
   {%- endif -%}
 {% endfor %}
 """
