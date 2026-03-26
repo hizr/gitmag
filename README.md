@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/hizr/gitmag/actions/workflows/ci.yml/badge.svg)](https://github.com/hizr/gitmag/actions/workflows/ci.yml)
 [![Release](https://github.com/hizr/gitmag/actions/workflows/release.yml/badge.svg)](https://github.com/hizr/gitmag/actions/workflows/release.yml)
-[![npm version](https://badge.fury.io/js/gitmag.svg)](https://badge.fury.io/js/gitmag)
+[![npm version](https://img.shields.io/npm/v/gitmag.svg)](https://www.npmjs.com/package/gitmag)
 
 A lightweight, keyboard-driven TUI application for exploring git repositories directly from your terminal. Inspired by `gitk`, Git Magazine delivers a streamlined, interactive experience with live git data integration, ASCII commit graphs, fuzzy search, and a unified diff viewer.
 
