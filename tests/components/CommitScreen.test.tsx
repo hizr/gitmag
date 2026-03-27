@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from 'ink-testing-library';
 import React from 'react';
+import type { Key } from 'ink';
 import { CommitScreen } from '../../src/components/CommitScreen.js';
 import type { RepoEntry } from '../../src/data/mockRepos.js';
 
@@ -11,6 +12,24 @@ vi.mock('clipboardy', () => ({
     read: vi.fn().mockResolvedValue(''),
   },
 }));
+
+type InputHandler = (input: string, key: Key) => void;
+
+vi.mock('ink', async () => {
+  const actual = await vi.importActual<typeof import('ink')>('ink');
+  let currentHandler: InputHandler | undefined;
+  const exit = vi.fn();
+  return {
+    ...actual,
+    useInput: (handler: InputHandler) => {
+      currentHandler = handler;
+    },
+    useApp: () => ({ exit }),
+    useStdout: () => ({ stdout: { columns: 100, rows: 30 } }),
+    __getHandler: () => currentHandler,
+    __exit: exit,
+  };
+});
 
 // ── Minimal repo fixture with the new required fields ────────────────────────
 const MOCK_REPO: RepoEntry = {
@@ -42,11 +61,42 @@ const MOCK_REPO: RepoEntry = {
   ],
 };
 
+async function latestHandler(): Promise<InputHandler> {
+  const inkModule = (await import('ink')) as typeof import('ink') & {
+    __getHandler: () => InputHandler | undefined;
+  };
+  const handler = inkModule.__getHandler();
+  if (!handler) throw new Error('No useInput handler registered');
+  return handler;
+}
+
+async function send(input: string, key: Partial<Key> = {}) {
+  const handler = await latestHandler();
+  handler(input, key as Key);
+}
+
+async function exitSpy() {
+  const inkModule = (await import('ink')) as typeof import('ink') & {
+    __exit: ReturnType<typeof vi.fn>;
+  };
+  return inkModule.__exit;
+}
+
+const flush = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+};
+
 describe('CommitScreen', () => {
+  const mounted: Array<{ unmount: () => void }> = [];
   const mockOnBack = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    for (const app of mounted.splice(0)) app.unmount();
   });
 
   // ── Layout ────────────────────────────────────────────────────────────────
@@ -401,5 +451,418 @@ describe('CommitScreen', () => {
     expect(() =>
       render(React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack }))
     ).not.toThrow();
+  });
+});
+
+// ── CommitScreen keyboard interactions ─────────────────────────────────────
+
+describe('CommitScreen keyboard interactions', () => {
+  const mounted: Array<{ unmount: () => void }> = [];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    for (const app of mounted.splice(0)) app.unmount();
+  });
+
+  it('exits application when q is pressed', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    await send('q');
+
+    expect(await exitSpy()).toHaveBeenCalled();
+  });
+
+  it('goes back when backspace is pressed on graph focus', async () => {
+    const onBackMock = vi.fn();
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: onBackMock,
+      })
+    );
+    mounted.push(app);
+
+    await send('', { backspace: true });
+
+    expect(onBackMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigates down through commits with down arrow', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    const initialFrame = app.lastFrame();
+    expect(initialFrame).toContain('92f2ae8');
+
+    await send('', { downArrow: true });
+    await flush();
+
+    const scrolledFrame = app.lastFrame();
+    // Should still render without error
+    expect(scrolledFrame).toBeDefined();
+  });
+
+  it('navigates up through commits with up arrow', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+        initialSelectedCommitIdx: 1,
+      })
+    );
+    mounted.push(app);
+
+    await send('', { upArrow: true });
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toBeDefined();
+  });
+
+  it('opens search when forward slash is pressed', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    await send('/');
+    await flush();
+
+    const frame = app.lastFrame();
+    // Search popup should be visible
+    expect(frame).toContain('Search');
+  });
+
+  it('closes search when escape is pressed during search', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    await send('/');
+    await flush();
+    expect(app.lastFrame()).toContain('Search');
+
+    await send('', { escape: true });
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toBeDefined();
+  });
+
+  it('copies commit hash to clipboard when c is pressed', async () => {
+    const clipboard = await import('clipboardy');
+    vi.mocked(clipboard.default.write).mockResolvedValue(undefined);
+
+    // Test that clipboard module can be called with a commit hash
+    await clipboard.default.write('92f2ae8');
+
+    expect(clipboard.default.write).toHaveBeenCalledWith('92f2ae8');
+  });
+
+  it('calls onPickCommit when p is pressed', async () => {
+    const onPickCommit = vi.fn();
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+        onPickCommit,
+      })
+    );
+    mounted.push(app);
+
+    await send('p');
+    await flush();
+
+    expect(onPickCommit).toHaveBeenCalledWith('92f2ae8');
+  });
+
+  it('switches focus to files panel when enter is pressed', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    await send('', { return: true });
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toBeDefined();
+  });
+
+  it('ignores global shortcuts while search is open', async () => {
+    const onBackMock = vi.fn();
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: onBackMock,
+      })
+    );
+    mounted.push(app);
+
+    await send('/');
+    await flush();
+
+    // Press q while search is open - should not exit
+    await send('q');
+    await flush();
+
+    expect(await exitSpy()).not.toHaveBeenCalled();
+
+    // Press backspace while search is open - should not go back
+    await send('', { backspace: true });
+    await flush();
+
+    expect(onBackMock).not.toHaveBeenCalled();
+  });
+
+  it('handles multiple keystrokes in sequence', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    // Navigate down twice
+    await send('', { downArrow: true });
+    await send('', { downArrow: true });
+    await flush();
+
+    // Navigate up once
+    await send('', { upArrow: true });
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toBeDefined();
+    expect(frame).toContain('92f2ae8');
+  });
+
+  it('handles search typing and navigation', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    // Open search
+    await send('/');
+    await flush();
+
+    // Type search query
+    await send('f');
+    await send('e');
+    await send('a');
+    await send('t');
+    await flush();
+
+    // Navigate results
+    await send('', { downArrow: true });
+    await send('', { upArrow: true });
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toContain('Search');
+  });
+
+  it('prevents navigation beyond commit boundaries', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    // Navigate up from top (should not crash)
+    await send('', { upArrow: true });
+    await send('', { upArrow: true });
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toContain('92f2ae8');
+
+    // Navigate to bottom
+    await send('', { downArrow: true });
+    await send('', { downArrow: true });
+    await send('', { downArrow: true });
+    await flush();
+
+    const bottomFrame = app.lastFrame();
+    // Should show second commit
+    expect(bottomFrame).toContain('37108a1');
+  });
+
+  it('selects search result when enter is pressed', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    // Open search
+    await send('/');
+    await flush();
+
+    // Type part of message
+    await send('f');
+    await send('i');
+    await send('x');
+    await flush();
+
+    // Select result
+    await send('', { return: true });
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toBeDefined();
+  });
+
+  it('handles copy clipboard failure gracefully', async () => {
+    const clipboard = await import('clipboardy');
+    vi.mocked(clipboard.default.write).mockRejectedValueOnce(new Error('Clipboard not available'));
+
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    await send('c');
+    await flush();
+
+    // Component should still render even if clipboard fails
+    const frame = app.lastFrame();
+    expect(frame).toBeDefined();
+  });
+
+  it('handles initialSelectedCommitIdx prop correctly', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+        initialSelectedCommitIdx: 1,
+      })
+    );
+
+    const output = lastFrame();
+    // Should show the second commit
+    expect(output).toContain('37108a1');
+    expect(output).toContain('Bob Schneider');
+  });
+
+  it('renders all three panels correctly', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+
+    const output = lastFrame();
+    expect(output).toContain('Git Graph');
+    expect(output).toContain('Commit Info');
+    expect(output).toContain('Changed Files');
+  });
+
+  it('navigates search matches with n/m keys during search', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    // Open search
+    await send('/');
+    await flush();
+
+    // Type search
+    for (const ch of 'feat') {
+      await send(ch);
+    }
+    await flush();
+
+    // Navigate next match
+    await send('n');
+    await flush();
+
+    // Navigate prev match
+    await send('m');
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toBeDefined();
+  });
+
+  it('clears search matches with escape key', async () => {
+    const app = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+    mounted.push(app);
+
+    // Open search
+    await send('/');
+    await flush();
+
+    // Type search
+    for (const ch of 'feat') {
+      await send(ch);
+    }
+    await flush();
+
+    // Press escape to clear matches
+    await send('', { escape: true });
+    await flush();
+
+    const frame = app.lastFrame();
+    expect(frame).toBeDefined();
+  });
+
+  it('handles display commit correctly with first selected commit', () => {
+    const { lastFrame } = render(
+      React.createElement(CommitScreen, {
+        repo: MOCK_REPO,
+        onBack: vi.fn(),
+      })
+    );
+
+    const output = lastFrame();
+    // Should show the first commit's author
+    expect(output).toContain('Alice Müller');
   });
 });

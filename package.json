@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "dead-code": "knip",
     "duplication": "jscpd src --min-tokens 80 --threshold 0",
     "audit": "npm install --package-lock-only --ignore-scripts && better-npm-audit audit --level high",

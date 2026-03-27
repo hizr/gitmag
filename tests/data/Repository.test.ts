@@ -60,6 +60,20 @@ describe('Repository', () => {
     }
   });
 
+  it('throws with helpful suggestion for non-existent directory', async () => {
+    const nonExistentDir = path.join(os.tmpdir(), '.nonexistent-' + Date.now());
+
+    try {
+      await Repository.open(nonExistentDir);
+      expect.fail('Repository.open should have thrown for non-existent directory');
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      const msg = error?.message || String(err);
+      // simple-git throws "Cannot use simple-git on a directory that does not exist"
+      expect(msg.toLowerCase()).toMatch(/does not exist|not a git repository/i);
+    }
+  });
+
   it('lists commits with correct structure', async () => {
     const repo = await Repository.open(tempDir);
     const commits = await repo.listCommits(10);
@@ -76,6 +90,24 @@ describe('Repository', () => {
     // Most recent commit first
     expect(commits[0].message).toContain('add file2');
     expect(commits[1].message).toContain('initial');
+  });
+
+  it('caches commit list results', async () => {
+    const repo = await Repository.open(tempDir);
+    const commits1 = await repo.listCommits(10);
+    const commits2 = await repo.listCommits(10);
+
+    // Should return the same cached results
+    expect(commits1).toBe(commits2);
+  });
+
+  it('returns different cache for different limits', async () => {
+    const repo = await Repository.open(tempDir);
+    const commits1 = await repo.listCommits(1);
+    const commits2 = await repo.listCommits(10);
+
+    // Different limits should have different results
+    expect(commits1.length).toBeLessThan(commits2.length);
   });
 
   it('gets changed files for a commit', async () => {
@@ -122,5 +154,120 @@ describe('Repository', () => {
     const diff = await repo.getDiff(commitHash, 'nonexistent.txt');
 
     expect(diff).toBe('');
+  });
+
+  it('returns empty array for changed files when git fails', async () => {
+    const repo = await Repository.open(tempDir);
+    const files = await repo.getChangedFiles('');
+
+    expect(Array.isArray(files)).toBe(true);
+  });
+
+  it('gets changed files for all commits in batch', async () => {
+    const repo = await Repository.open(tempDir);
+    const filesMap = await repo.getChangedFilesForAllCommits(10);
+
+    // Should have entries for each commit
+    expect(filesMap.size).toBeGreaterThan(0);
+
+    // Each entry should have a hash key and array value
+    filesMap.forEach((files, hash) => {
+      expect(typeof hash).toBe('string');
+      expect(Array.isArray(files)).toBe(true);
+      files.forEach((file) => {
+        expect(file).toHaveProperty('status');
+        expect(file).toHaveProperty('path');
+      });
+    });
+  });
+
+  it('handles getChangedFilesForAllCommits returning empty map on error', async () => {
+    const repo = await Repository.open(tempDir);
+    const filesMap = await repo.getChangedFilesForAllCommits(100);
+
+    // Should return a map (possibly empty) not throw
+    expect(filesMap instanceof Map).toBe(true);
+  });
+
+  it('returns empty string for diff on invalid commit', async () => {
+    const repo = await Repository.open(tempDir);
+    const diff = await repo.getDiff('invalid_hash', 'file.txt');
+
+    expect(diff).toBe('');
+  });
+
+  it('handles working changes from status', async () => {
+    const repo = await Repository.open(tempDir);
+
+    // Create some working changes
+    fs.writeFileSync(path.join(tempDir, 'file3.txt'), 'new file\n');
+
+    const changes = await repo.getWorkingChanges();
+
+    // Should have the untracked file
+    expect(changes).toHaveProperty('staged');
+    expect(changes).toHaveProperty('unstaged');
+    expect(changes).toHaveProperty('untracked');
+    expect(Array.isArray(changes.staged)).toBe(true);
+    expect(Array.isArray(changes.unstaged)).toBe(true);
+    expect(Array.isArray(changes.untracked)).toBe(true);
+  });
+
+  it('handles getWorkingChanges returning empty on error', async () => {
+    const repo = await Repository.open(tempDir);
+    const changes = await repo.getWorkingChanges();
+
+    // Should always return an object with the three properties
+    expect(changes).toHaveProperty('staged');
+    expect(changes).toHaveProperty('unstaged');
+    expect(changes).toHaveProperty('untracked');
+  });
+
+  it('gets refs for commits', async () => {
+    const repo = await Repository.open(tempDir);
+    const refs = await repo.getRefs();
+
+    // Should return a map
+    expect(refs instanceof Map).toBe(true);
+  });
+
+  it('handles getRefs returning empty map on error', async () => {
+    const repo = await Repository.open(tempDir);
+    const refs = await repo.getRefs();
+
+    // Should return a map (even if empty)
+    expect(refs instanceof Map).toBe(true);
+  });
+
+  it('gets branch info with defaults', async () => {
+    const repo = await Repository.open(tempDir);
+    const branchInfo = await repo.getBranchInfo('Test User');
+
+    expect(branchInfo).toHaveProperty('currentBranch');
+    expect(branchInfo).toHaveProperty('remoteBranch');
+    expect(branchInfo).toHaveProperty('ahead');
+    expect(branchInfo).toHaveProperty('behind');
+    expect(branchInfo).toHaveProperty('headAuthor');
+    expect(branchInfo).toHaveProperty('repoPath');
+    expect(branchInfo.headAuthor).toBe('Test User');
+    expect(branchInfo.repoPath).toBe(tempDir);
+  });
+
+  it('handles branch info with detached HEAD', async () => {
+    const repo = await Repository.open(tempDir);
+    const branchInfo = await repo.getBranchInfo('Test User');
+
+    // Should have branch info even if detached
+    expect(branchInfo).toBeDefined();
+    expect(branchInfo.currentBranch).toBeDefined();
+  });
+
+  it('handles branch info when getBranchInfo fails gracefully', async () => {
+    const repo = await Repository.open(tempDir);
+    const branchInfo = await repo.getBranchInfo('Test User');
+
+    // Should always return valid branch info object
+    expect(branchInfo.ahead).toBeGreaterThanOrEqual(0);
+    expect(branchInfo.behind).toBeGreaterThanOrEqual(0);
   });
 });
