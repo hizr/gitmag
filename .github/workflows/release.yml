@@ -154,7 +154,7 @@ jobs:
           tar -tzf gitmag-${{ needs.check-version.outputs.new-version }}.tgz | head -20
 
       - name: Publish to npm registry
-        run: bun publish
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
