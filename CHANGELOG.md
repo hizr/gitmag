@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
 
+### Documentation
+
+- Switch npm version badge from badge.fury.io to shields.io for faster cache updates (a103f7a)
+
+### Fixed
+
+- Harden terminal restore for command substitution (d212a6e)
+
+### Miscellaneous
+
+- Complete bun migration in release.yml workflows (d02c7ac)
+- Remove package-lock.json and switch to better-npm-audit (e9b9f28)
+
+### Testing
+
+- Increase coverage to 90.22% across key components (75ceaee)
+
+## [v0.2.4] - 2026-03-25
+
 ### Fixed
 
 - Remove redundant tag push from publish job (e00030a)
@@ -147,4 +166,4 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 - Update panel border formatting in RepoScreen (cf25603)
 
-[v0.2.2]: https://github.com/hizr/gitmag/releases/tag/v0.2.2[v0.2.1]: https://github.com/hizr/gitmag/releases/tag/v0.2.1[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
+[v0.2.4]: https://github.com/hizr/gitmag/releases/tag/v0.2.4[v0.2.2]: https://github.com/hizr/gitmag/releases/tag/v0.2.2[v0.2.1]: https://github.com/hizr/gitmag/releases/tag/v0.2.1[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
