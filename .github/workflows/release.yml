@@ -23,12 +23,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Extract version from tag
         id: check
         run: |
           # Extract version from tag (remove 'v' prefix)
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          PACKAGE_VERSION=$(bun -e "console.log(require('./package.json').version)")
 
           echo "Tag version: $TAG_VERSION"
           echo "Package.json version: $PACKAGE_VERSION"
@@ -56,35 +59,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Type checking
-        run: npm run typecheck
+        run: bun run typecheck
 
       - name: Lint code
-        run: npm run lint
+        run: bun run lint
 
       - name: Dead code check
-        run: npm run dead-code
+        run: bun run dead-code
 
       - name: Duplication check
-        run: npm run duplication
+        run: bun run duplication
 
       - name: Security audit
-        run: npm run audit
+        run: bun run audit
 
       - name: Run tests with coverage enforcement
-        run: npm test -- --coverage --coverage.lines=80 --coverage.branches=80 --coverage.functions=80 --coverage.statements=80
+        run: bun run test -- --coverage --coverage.lines=80 --coverage.branches=80 --coverage.functions=80 --coverage.statements=80
 
       - name: Build for production
-        run: npm run build
+        run: bun run build
 
       - name: Check dist directory size
         run: |
@@ -110,10 +110,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Generate changelog with git-cliff
         id: changelog
         run: |
-          npx git-cliff --config cliff-release.toml --strip header > CHANGELOG_ENTRY.md
+          bunx git-cliff --config cliff-release.toml --strip header > CHANGELOG_ENTRY.md
           CHANGELOG=$(cat CHANGELOG_ENTRY.md)
           # Escape for GitHub Output
           CHANGELOG="${CHANGELOG//'%'/'%25'}"
@@ -136,19 +139,22 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org/'
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build for production
-        run: npm run build
+        run: bun run build
 
       - name: Pack and inspect
         run: |
-          npm pack
+          bun pm pack
           tar -tzf gitmag-${{ needs.check-version.outputs.new-version }}.tgz | head -20
 
       - name: Publish to npm registry
-        run: npm publish
+        run: bun publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
