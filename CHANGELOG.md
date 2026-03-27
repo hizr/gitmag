@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ### Fixed
 
+- Use npm publish in release workflow (5f4faa1)
+
+## [v0.2.7] - 2026-03-27
+
+### Fixed
+
 - Correct CI guard logic in prepare script (398128c)
 
 ## [v0.2.6] - 2026-03-27
@@ -178,4 +184,4 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 - Update panel border formatting in RepoScreen (cf25603)
 
-[v0.2.6]: https://github.com/hizr/gitmag/releases/tag/v0.2.6[v0.2.5]: https://github.com/hizr/gitmag/releases/tag/v0.2.5[v0.2.4]: https://github.com/hizr/gitmag/releases/tag/v0.2.4[v0.2.2]: https://github.com/hizr/gitmag/releases/tag/v0.2.2[v0.2.1]: https://github.com/hizr/gitmag/releases/tag/v0.2.1[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
+[v0.2.7]: https://github.com/hizr/gitmag/releases/tag/v0.2.7[v0.2.6]: https://github.com/hizr/gitmag/releases/tag/v0.2.6[v0.2.5]: https://github.com/hizr/gitmag/releases/tag/v0.2.5[v0.2.4]: https://github.com/hizr/gitmag/releases/tag/v0.2.4[v0.2.2]: https://github.com/hizr/gitmag/releases/tag/v0.2.2[v0.2.1]: https://github.com/hizr/gitmag/releases/tag/v0.2.1[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
