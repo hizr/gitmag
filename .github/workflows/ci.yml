@@ -14,32 +14,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Type checking
-        run: npm run typecheck
+        run: bun run typecheck
 
       - name: Lint code
-        run: npm run lint
+        run: bun run lint
 
       - name: Dead code & dependency check (knip)
-        run: npm run dead-code
+        run: bun run dead-code
 
       - name: Duplication check (jscpd)
-        run: npm run duplication
+        run: bun run duplication
 
       - name: Dependency vulnerability audit
-        run: npm run audit
+        run: bun run audit
 
       - name: Run tests with coverage enforcement
-        run: npm test -- --coverage --coverage.lines=80 --coverage.branches=80 --coverage.functions=80 --coverage.statements=80
+        run: bun run test -- --coverage --coverage.lines=80 --coverage.branches=80 --coverage.functions=80 --coverage.statements=80
 
   build:
     name: Build
@@ -48,14 +45,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 24
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build project
-        run: npm run build
+        run: bun run build
