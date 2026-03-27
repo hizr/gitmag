@@ -6,7 +6,7 @@
     "gitmag": "./dist/index.js"
   },
   "scripts": {
-    "prepare": "husky",
+    "prepare": "node -e \"if (process.env.CI) process.exit(0)\" && husky",
     "dev": "bun src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
