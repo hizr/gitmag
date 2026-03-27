@@ -1,14 +1,13 @@
 import React from 'react';
 import { render } from 'ink';
-import {
-  enterAlternativeScreen,
-  exitAlternativeScreen,
-  cursorHide,
-  cursorShow,
-} from 'ansi-escapes';
 import { App } from './app.js';
-
-const isTTY = Boolean(process.stdout.isTTY);
+import {
+  createTerminalController,
+  selectRenderTarget,
+  type TerminalStream,
+} from './utils/terminal.js';
+import { closeSync, openSync } from 'node:fs';
+import { WriteStream as TtyWriteStream } from 'node:tty';
 
 /**
  * When stdout is a TTY (interactive terminal), render the TUI there.
@@ -16,24 +15,42 @@ const isTTY = Boolean(process.stdout.isTTY);
  * appears on the terminal but doesn't pollute the captured stdout.
  * This allows gitmag to be used in shell command substitution.
  */
-const renderTarget = isTTY ? process.stdout : process.stderr;
+const makeTtyFallback = (): { stream: TerminalStream | null; fd: number | null } => {
+  if (process.stdout.isTTY || process.stderr.isTTY) {
+    return { stream: null, fd: null };
+  }
+
+  try {
+    const fd = openSync('/dev/tty', 'w');
+    return { stream: new TtyWriteStream(fd), fd };
+  } catch {
+    return { stream: null, fd: null };
+  }
+};
+
+const { stream: ttyFallbackStream, fd: ttyFallbackFd } = makeTtyFallback();
+const renderTarget = selectRenderTarget(
+  process.stdout,
+  process.stderr,
+  ttyFallbackStream
+) as TtyWriteStream;
+const terminal = createTerminalController(
+  renderTarget,
+  process.stdout.isTTY || process.stderr.isTTY || Boolean(renderTarget.isTTY)
+);
+
+const originalProcessExit = process.exit.bind(process);
+process.exit = ((code?: number | string | null | undefined): never => {
+  terminal.restore();
+  const normalizedCode = typeof code === 'number' ? code : 0;
+  return originalProcessExit(normalizedCode);
+}) as typeof process.exit;
 
 /** Commit hash picked by the user via the 'p' key, to be emitted after exit. */
 let pickedHash: string | null = null;
 
-/** Restore the terminal to its prior state before exiting. */
-function restoreTerminal(): void {
-  if (isTTY) {
-    renderTarget.write(cursorShow);
-    renderTarget.write(exitAlternativeScreen);
-  }
-}
-
 // Enter fullscreen alternative screen buffer and hide cursor
-if (isTTY) {
-  renderTarget.write(enterAlternativeScreen);
-  renderTarget.write(cursorHide);
-}
+terminal.enter();
 
 const { waitUntilExit } = render(
   React.createElement(App, {
@@ -44,26 +61,42 @@ const { waitUntilExit } = render(
   { stdout: renderTarget }
 );
 
+// Final safety net: restore terminal even on abrupt process exit paths.
+process.on('exit', () => {
+  terminal.restore();
+  if (ttyFallbackFd !== null) {
+    closeSync(ttyFallbackFd);
+  }
+});
+
+process.on('uncaughtException', () => {
+  terminal.restore();
+});
+
+process.on('unhandledRejection', () => {
+  terminal.restore();
+});
+
 // Restore terminal on clean exit
 waitUntilExit()
   .then(() => {
-    restoreTerminal();
+    terminal.restore();
     if (pickedHash !== null) {
       process.stdout.write(pickedHash + '\n');
     }
   })
   .catch(() => {
-    restoreTerminal();
+    terminal.restore();
     process.exit(1);
   });
 
 // Restore terminal on SIGTERM / SIGINT
 process.on('SIGTERM', () => {
-  restoreTerminal();
+  terminal.restore();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  restoreTerminal();
+  terminal.restore();
   process.exit(0);
 });
