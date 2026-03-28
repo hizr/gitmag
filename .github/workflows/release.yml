@@ -116,14 +116,13 @@ jobs:
       - name: Generate changelog with git-cliff
         id: changelog
         run: |
-          bunx git-cliff --config cliff-release.toml --strip header > CHANGELOG_ENTRY.md
-          CHANGELOG=$(cat CHANGELOG_ENTRY.md)
-          # Escape for GitHub Output
-          CHANGELOG="${CHANGELOG//'%'/'%25'}"
-          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
-          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
-          echo "content=$CHANGELOG" >> $GITHUB_OUTPUT
+          bunx git-cliff --config cliff-release.toml --strip header --latest > CHANGELOG_ENTRY.md
           cat CHANGELOG_ENTRY.md
+          {
+            echo "content<<EOF"
+            cat CHANGELOG_ENTRY.md
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
   publish:
     name: Publish to npm
