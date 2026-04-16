@@ -270,4 +270,86 @@ describe('Repository', () => {
     expect(branchInfo.ahead).toBeGreaterThanOrEqual(0);
     expect(branchInfo.behind).toBeGreaterThanOrEqual(0);
   });
+
+  it('gets working diff for unstaged changes', async () => {
+    const repo = await Repository.open(tempDir);
+
+    // Modify a file in the working directory (unstaged)
+    fs.writeFileSync(path.join(tempDir, 'file1.txt'), 'content 1 modified\n');
+
+    const diff = await repo.getWorkingDiff('file1.txt', 'unstaged');
+
+    // Diff should show the change
+    expect(diff).toBeTruthy();
+    expect(diff).toContain('-');
+    expect(diff).toContain('+');
+  });
+
+  it('gets working diff for staged changes', async () => {
+    const repo = await Repository.open(tempDir);
+
+    // Stage a change
+    fs.writeFileSync(path.join(tempDir, 'file2.txt'), 'content 2 modified\n');
+    const git = simpleGit(tempDir);
+    await git.add('file2.txt');
+
+    const diff = await repo.getWorkingDiff('file2.txt', 'staged');
+
+    // Diff should show changes from HEAD
+    expect(diff).toBeTruthy();
+  });
+
+  it('gets working diff for untracked file', async () => {
+    const repo = await Repository.open(tempDir);
+
+    // Create an untracked file
+    fs.writeFileSync(path.join(tempDir, 'untracked.txt'), 'new content\n');
+
+    const diff = await repo.getWorkingDiff('untracked.txt', 'untracked');
+
+    // Should synthesize a diff showing all lines as additions
+    expect(diff).toContain('new file mode');
+    expect(diff).toContain('+++');
+    expect(diff).toContain('+new content');
+  });
+
+  it('gets working diff for empty untracked file', async () => {
+    const repo = await Repository.open(tempDir);
+
+    // Create an empty untracked file
+    fs.writeFileSync(path.join(tempDir, 'empty.txt'), '');
+
+    const diff = await repo.getWorkingDiff('empty.txt', 'untracked');
+
+    // Should have diff header even if no content lines
+    expect(diff).toContain('new file mode');
+    expect(diff).toContain('+++');
+  });
+
+  it('returns empty string for nonexistent working diff', async () => {
+    const repo = await Repository.open(tempDir);
+
+    const diff = await repo.getWorkingDiff('nonexistent.txt', 'unstaged');
+
+    // Should return empty string gracefully
+    expect(diff).toBe('');
+  });
+
+  it('synthesizes diff with multiline content for untracked file', async () => {
+    const repo = await Repository.open(tempDir);
+
+    // Create an untracked file with multiple lines
+    const multilineContent = 'line 1\nline 2\nline 3\n';
+    fs.writeFileSync(path.join(tempDir, 'multiline.txt'), multilineContent);
+
+    const diff = await repo.getWorkingDiff('multiline.txt', 'untracked');
+
+    // Should have proper diff header
+    expect(diff).toContain('new file mode');
+    expect(diff).toContain('+++');
+    expect(diff).toContain('@@ -0,0 +1,3 @@');
+    expect(diff).toContain('+line 1');
+    expect(diff).toContain('+line 2');
+    expect(diff).toContain('+line 3');
+  });
 });

@@ -1,6 +1,7 @@
 import { simpleGit } from 'simple-git';
 import type { CommitEntry, ChangedFile, WorkingChanges, BranchInfo } from './mockRepos.js';
 import type { SimpleGit } from 'simple-git';
+import { readFile } from 'fs/promises';
 
 type FileStatus = 'M' | 'A' | 'D' | 'R';
 
@@ -188,6 +189,69 @@ export class Repository {
       // File doesn't exist in this commit or commit is invalid
       return '';
     }
+  }
+
+  /**
+   * Fetch the diff for a file in the working directory (uncommitted changes).
+   * Handles staged, unstaged, and untracked files differently.
+   *
+   * - 'staged': shows git diff HEAD (what would be committed vs HEAD)
+   * - 'unstaged': shows git diff (working tree changes vs index)
+   * - 'untracked': reads the file and synthesizes a unified diff with all lines as additions
+   *
+   * @param filePath Path to the file
+   * @param fileStatus Category of the file: 'staged', 'unstaged', or 'untracked'
+   */
+  async getWorkingDiff(
+    filePath: string,
+    fileStatus: 'staged' | 'unstaged' | 'untracked'
+  ): Promise<string> {
+    try {
+      const fullPath = `${this.basePath}/${filePath}`;
+
+      if (fileStatus === 'untracked') {
+        // For untracked files, read the file and synthesize a unified diff
+        try {
+          const content = await readFile(fullPath, 'utf-8');
+          return this.synthesizeDiff(filePath, content);
+        } catch {
+          // File doesn't exist or can't be read; return empty
+          return '';
+        }
+      } else if (fileStatus === 'staged') {
+        // For staged files: show HEAD vs working tree (combined staged + unstaged)
+        const actualDiff = await this.git.diff(['HEAD', '--', filePath]);
+        return actualDiff;
+      } else {
+        // For unstaged files: show index (or HEAD if not staged) vs working tree
+        const actualDiff = await this.git.diff(['--', filePath]);
+        return actualDiff;
+      }
+    } catch {
+      // Git operation failed or file is inaccessible
+      return '';
+    }
+  }
+
+  /**
+   * Synthesize a unified diff for an untracked (new) file.
+   * Mimics the output of `git diff` for a file that exists only in the working directory.
+   *
+   * @param filePath Relative path to the file
+   * @param content Full text content of the file
+   */
+  private synthesizeDiff(filePath: string, content: string): string {
+    const lines = content.split('\n');
+    // Remove the trailing empty line if content ends with newline
+    if (lines.length > 0 && lines[lines.length - 1] === '') {
+      lines.pop();
+    }
+
+    const diffHeader = `diff --git a/${filePath} b/${filePath}\nnew file mode 100644\nindex 0000000..1234567\n--- /dev/null\n+++ b/${filePath}\n@@ -0,0 +1,${lines.length} @@\n`;
+
+    const diffLines = lines.map((line) => `+${line}`).join('\n');
+
+    return diffHeader + (diffLines ? diffLines : '');
   }
 
   /**

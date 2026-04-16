@@ -138,7 +138,23 @@ export function App({ onPickCommit }: AppProps) {
         onPickCommit={onPickCommit}
         onOpenDiff={(commit, file, fileIdx, commitIdx) => {
           if (repository) {
-            const getDiff = () => repository.getDiff(commit.hash, file.path);
+            let getDiff: () => Promise<string>;
+
+            // Check if this is the synthetic __WORKING__ commit
+            if (commit.hash === '__WORKING__' && workingChanges) {
+              // Determine file status by looking it up in workingChanges
+              let fileStatus: 'staged' | 'unstaged' | 'untracked' = 'unstaged';
+              if (workingChanges.staged.some((f) => f.path === file.path)) {
+                fileStatus = 'staged';
+              } else if (workingChanges.untracked.some((f) => f.path === file.path)) {
+                fileStatus = 'untracked';
+              }
+              getDiff = () => repository.getWorkingDiff(file.path, fileStatus);
+            } else {
+              // Regular commit: use the standard getDiff
+              getDiff = () => repository.getDiff(commit.hash, file.path);
+            }
+
             push({
               name: 'diff',
               repo: current.repo,

@@ -204,10 +204,19 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
         <Text color="gray"> › </Text>
         <Text color="yellow">{repo.path}</Text>
         <Text color="gray"> › </Text>
-        <Text color="white">commits</Text>
-        <Text color="gray"> › </Text>
-        <Text color="green">{commit.hash.slice(0, 7)}</Text>
-        <Text color="gray"> — </Text>
+        {commit.hash === '__WORKING__' ? (
+          <>
+            <Text color="white">working changes</Text>
+            <Text color="gray"> — </Text>
+          </>
+        ) : (
+          <>
+            <Text color="white">commits</Text>
+            <Text color="gray"> › </Text>
+            <Text color="green">{commit.hash.slice(0, 7)}</Text>
+            <Text color="gray"> — </Text>
+          </>
+        )}
         <Text color="cyan">{file.path}</Text>
       </Box>
 
