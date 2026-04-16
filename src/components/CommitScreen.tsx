@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
 import { buildGraphLines } from '../utils/git-graph.js';
@@ -94,6 +94,12 @@ export function CommitScreen({
   const [selectedCommitIdx, setSelectedCommitIdx] = useState(
     Math.min(initialSelectedCommitIdx, Math.max(commitOnlyIndices.length - 1, 0))
   );
+  const selectedCommitIdxRef = useRef(selectedCommitIdx);
+
+  // Keep the ref in sync whenever selectedCommitIdx changes (from any setter)
+  useEffect(() => {
+    selectedCommitIdxRef.current = selectedCommitIdx;
+  }, [selectedCommitIdx]);
   const [graphScroll, setGraphScroll] = useState(0);
   const [infoScroll, setInfoScroll] = useState(0);
   const [selectedFileIdx, setSelectedFileIdx] = useState(initialSelectedFileIdx);
@@ -198,6 +204,7 @@ export function CommitScreen({
       }
       setActiveMatchIdx(nextIdx);
       const newCommitIdx = matchIndices[nextIdx]!;
+      selectedCommitIdxRef.current = newCommitIdx;
       setSelectedCommitIdx(newCommitIdx);
       const newGraphLineIdx = commitOnlyIndices[newCommitIdx] ?? 0;
       setGraphScroll((p) => {
@@ -212,22 +219,35 @@ export function CommitScreen({
   // ── Navigate graph rows ───────────────────────────────────────────────
   const navigateGraph = useCallback(
     (direction: 'up' | 'down') => {
+      const currentIdx = selectedCommitIdxRef.current;
       const nextCommitIdx =
         direction === 'up'
-          ? Math.max(selectedCommitIdx - 1, 0)
-          : Math.min(selectedCommitIdx + 1, commitOnlyIndices.length - 1);
+          ? Math.max(currentIdx - 1, 0)
+          : Math.min(currentIdx + 1, commitOnlyIndices.length - 1);
 
+      selectedCommitIdxRef.current = nextCommitIdx;
       setSelectedCommitIdx(nextCommitIdx);
 
       // Scroll operates in graphLines space; convert commit index → graphLine index
       const nextGraphLineIdx = commitOnlyIndices[nextCommitIdx] ?? 0;
+      const maxScroll = Math.max(graphLines.length - graphInnerH, 0);
+      // Keep a scroll margin so connector rows around the selection stay visible.
+      // This prevents multi-line jumps when a connector sits between two commits.
+      const scrollMargin = graphInnerH > 3 ? 1 : 0;
+
       setGraphScroll((p) => {
-        if (nextGraphLineIdx < p) return nextGraphLineIdx;
-        if (nextGraphLineIdx >= p + graphInnerH) return nextGraphLineIdx - graphInnerH + 1;
+        // Scrolling up: keep margin rows above selection visible
+        if (nextGraphLineIdx < p + scrollMargin) {
+          return Math.max(nextGraphLineIdx - scrollMargin, 0);
+        }
+        // Scrolling down: keep margin rows below selection visible
+        if (nextGraphLineIdx > p + graphInnerH - 1 - scrollMargin) {
+          return Math.min(nextGraphLineIdx - graphInnerH + 1 + scrollMargin, maxScroll);
+        }
         return p;
       });
     },
-    [selectedCommitIdx, commitOnlyIndices, graphInnerH]
+    [commitOnlyIndices, graphInnerH, graphLines.length]
   );
 
   // ── Navigate file list ────────────────────────────────────────────────
