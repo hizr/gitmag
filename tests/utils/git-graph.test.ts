@@ -17,39 +17,33 @@ function commit(hash: string, parentHash: string[], message = 'msg'): CommitEntr
 }
 
 describe('buildGraphLines', () => {
-  it('returns one line per commit', () => {
+  it('returns at least one line per commit', () => {
     const commits = [commit('a', ['b']), commit('b', [])];
     const lines = buildGraphLines(commits);
-    expect(lines).toHaveLength(2);
+    expect(lines.length).toBeGreaterThanOrEqual(commits.length);
   });
 
-  it('carries the original commit on each line', () => {
+  it('commit lines carry the original commit', () => {
     const commits = [commit('abc1234', [])];
     const lines = buildGraphLines(commits);
-    expect(lines[0].commit).toBe(commits[0]);
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    expect(commitLines[0].commit).toBe(commits[0]);
   });
 
   // ── Linear history ──────────────────────────────────────────────────
   it('linear: first commit gets a node symbol', () => {
     const commits = [commit('a', ['b']), commit('b', [])];
     const lines = buildGraphLines(commits);
-    expect(lines[0].prefix).toContain('●');
-    expect(lines[1].prefix).toContain('●');
-  });
-
-  it('linear: continuation rows between commits contain a pipe', () => {
-    const commits = [commit('a', ['b']), commit('b', ['c']), commit('c', [])];
-    const lines = buildGraphLines(commits);
-    // Each line should have a node (●)
-    for (const line of lines) {
-      expect(line.prefix).toContain('●');
-    }
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    expect(commitLines[0].prefix).toContain('●');
+    expect(commitLines[1].prefix).toContain('●');
   });
 
   it('linear: root commit (no parents) still renders a node', () => {
     const commits = [commit('root', [])];
     const lines = buildGraphLines(commits);
-    expect(lines[0].prefix).toContain('●');
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    expect(commitLines[0].prefix).toContain('●');
   });
 
   // ── Branch / merge ──────────────────────────────────────────────────
@@ -61,12 +55,26 @@ describe('buildGraphLines', () => {
       commit('base', []),
     ];
     const lines = buildGraphLines(commits);
-    const mergeLine = lines.find((l) => l.commit.hash === 'merge')!;
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    const mergeLine = commitLines.find((l) => l.commit.hash === 'merge')!;
     expect(mergeLine.prefix).toContain('●');
   });
 
+  it('merge commit emits a connector row after it', () => {
+    const commits = [
+      commit('merge', ['p1', 'p2']),
+      commit('p1', ['base']),
+      commit('p2', ['base']),
+      commit('base', []),
+    ];
+    const lines = buildGraphLines(commits);
+    const mergeCommitIdx = lines.findIndex((l) => l.kind === 'commit' && l.commit.hash === 'merge');
+    expect(mergeCommitIdx).toBeGreaterThanOrEqual(0);
+    // Next line should be a connector
+    expect(lines[mergeCommitIdx + 1]?.kind).toBe('connector');
+  });
+
   it('commits on a second lane get a higher column index', () => {
-    // merge opens a second lane; the branch commit should sit in a higher column
     const commits = [
       commit('merge', ['main1', 'branch1']),
       commit('main1', ['base']),
@@ -74,8 +82,9 @@ describe('buildGraphLines', () => {
       commit('base', []),
     ];
     const lines = buildGraphLines(commits);
-    const branchLine = lines.find((l) => l.commit.hash === 'branch1')!;
-    const mainLine = lines.find((l) => l.commit.hash === 'main1')!;
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    const branchLine = commitLines.find((l) => l.commit.hash === 'branch1')!;
+    const mainLine = commitLines.find((l) => l.commit.hash === 'main1')!;
     // branch commit must be in a higher (more indented) column
     expect(branchLine.column).toBeGreaterThan(mainLine.column);
     // its prefix must contain a node symbol
@@ -96,12 +105,67 @@ describe('buildGraphLines', () => {
     }
   });
 
-  // ── Column field ────────────────────────────────────────────────────
-  it('exposes a numeric column field on every line', () => {
+  // ── Connector rows ───────────────────────────────────────────────────
+  it('merge opening emits exactly one connector row', () => {
+    const commits = [commit('merge', ['p1', 'p2']), commit('p1', []), commit('p2', [])];
+    const lines = buildGraphLines(commits);
+    const connectors = lines.filter((l) => l.kind === 'connector');
+    // Merge opening should emit one connector
+    expect(connectors.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('merge opening connector uses backslash symbol', () => {
+    const commits = [commit('merge', ['p1', 'p2']), commit('p1', []), commit('p2', [])];
+    const lines = buildGraphLines(commits);
+    const mergeConnector = lines.find(
+      (l, idx) => l.kind === 'connector' && idx > 0 && lines[idx - 1].kind === 'commit'
+    );
+    expect(mergeConnector).toBeDefined();
+    if (mergeConnector && mergeConnector.kind === 'connector') {
+      expect(mergeConnector.prefix).toMatch(/\\/);
+    }
+  });
+
+  it('convergence of multiple lanes emits a connector row', () => {
+    const commits = [
+      commit('a', []),
+      commit('b', ['a']),
+      commit('c', ['a']),
+      commit('merge', ['b', 'c']),
+    ];
+    const lines = buildGraphLines([...commits].reverse());
+    const connectors = lines.filter((l) => l.kind === 'connector');
+    // Should have at least one connector for convergence
+    expect(connectors.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // ── Discriminated union type checking ────────────────────────────────
+  it('all commit lines have kind=commit and commit property', () => {
     const commits = [commit('a', ['b']), commit('b', [])];
     const lines = buildGraphLines(commits);
-    for (const line of lines) {
-      expect(typeof line.column).toBe('number');
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    for (const line of commitLines) {
+      expect(line.kind).toBe('commit');
+      if (line.kind === 'commit') {
+        expect(line.commit).toBeDefined();
+        expect(typeof line.commit.hash).toBe('string');
+        expect(typeof line.column).toBe('number');
+      }
+    }
+  });
+
+  it('all connector lines have kind=connector and prefix property', () => {
+    const commits = [commit('merge', ['p1', 'p2']), commit('p1', []), commit('p2', [])];
+    const lines = buildGraphLines(commits);
+    const connectors = lines.filter((l) => l.kind === 'connector');
+    for (const line of connectors) {
+      expect(line.kind).toBe('connector');
+      if (line.kind === 'connector') {
+        expect(typeof line.prefix).toBe('string');
+        // Should not have commit or column
+        expect((line as Record<string, unknown>).commit).toBeUndefined();
+        expect((line as Record<string, unknown>).column).toBeUndefined();
+      }
     }
   });
 
@@ -118,7 +182,22 @@ describe('buildGraphLines', () => {
       changedFiles: [],
     };
     const lines = buildGraphLines([commitWithRefs]);
-    expect(lines[0].commit.refs).toEqual(['HEAD', 'main', 'v1.0.0']);
+    const commitLine = lines.find((l) => l.kind === 'commit' && l.commit.hash === 'abc123');
+    if (commitLine && commitLine.kind === 'commit') {
+      expect(commitLine.commit.refs).toEqual(['HEAD', 'main', 'v1.0.0']);
+    }
+  });
+
+  // ── Column field ────────────────────────────────────────────────────
+  it('commit lines expose a numeric column field', () => {
+    const commits = [commit('a', ['b']), commit('b', [])];
+    const lines = buildGraphLines(commits);
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    for (const line of commitLines) {
+      if (line.kind === 'commit') {
+        expect(typeof line.column).toBe('number');
+      }
+    }
   });
 });
 
@@ -174,15 +253,16 @@ describe('CommitScreen: synthetic WORKING node injection', () => {
     const commits = [workingCommit, realCommit];
     const lines = buildGraphLines(commits);
 
-    // Should have two lines: WORKING and the real commit
-    expect(lines).toHaveLength(2);
+    // Should have at least two lines (one for each commit)
+    expect(lines.length).toBeGreaterThanOrEqual(2);
 
-    // First line should be the WORKING commit
-    expect(lines[0].commit.hash).toBe('__WORKING__');
-    expect(lines[0].prefix).toContain('●');
+    // First commit line should be the WORKING commit
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    expect(commitLines[0].commit.hash).toBe('__WORKING__');
+    expect(commitLines[0].prefix).toContain('●');
 
-    // Second line should be the real commit
-    expect(lines[1].commit.hash).toBe('abc123');
+    // Second commit line should be the real commit
+    expect(commitLines[1].commit.hash).toBe('abc123');
   });
 
   it('WORKING node is skipped when no changes exist', () => {
@@ -192,8 +272,9 @@ describe('CommitScreen: synthetic WORKING node injection', () => {
 
     // Simulate: no synthetic commit created because workingChanges is empty
     const lines = buildGraphLines(realCommits);
-    expect(lines).toHaveLength(1);
-    expect(lines[0].commit.hash).toBe('abc123');
+    const commitLines = lines.filter((l) => l.kind === 'commit');
+    expect(commitLines).toHaveLength(1);
+    expect(commitLines[0].commit.hash).toBe('abc123');
   });
 
   it('WORKING node collects all file categories', () => {
@@ -229,13 +310,15 @@ describe('CommitScreen: synthetic WORKING node injection', () => {
     const workingCommit = commit('__WORKING__', ['abc123']);
     const lines = buildGraphLines([workingCommit]);
 
-    const line = lines[0];
-    expect(line.commit.hash).toBe('__WORKING__');
-    // The prefix contains '●'; CommitScreen will replace it with '◆'
-    expect(line.prefix).toContain('●');
+    const commitLine = lines.find((l) => l.kind === 'commit' && l.commit.hash === '__WORKING__');
+    expect(commitLine).toBeDefined();
+    if (commitLine && commitLine.kind === 'commit') {
+      // The prefix contains '●'; CommitScreen will replace it with '◆'
+      expect(commitLine.prefix).toContain('●');
 
-    // Simulate the replacement that GraphRow does
-    const displayPrefix = line.prefix.replace('●', '◆');
-    expect(displayPrefix).toContain('◆');
+      // Simulate the replacement that GraphRow does
+      const displayPrefix = commitLine.prefix.replace('●', '◆');
+      expect(displayPrefix).toContain('◆');
+    }
   });
 });

@@ -66,7 +66,18 @@ export class Repository {
       return this.commitCache.get(limit)!;
     }
 
-    const log = await this.git.log({ maxCount: limit, symmetric: false });
+    const log = await this.git.log({
+      maxCount: limit,
+      symmetric: false,
+      format: {
+        hash: '%H',
+        date: '%aI',
+        message: '%s',
+        author_name: '%aN',
+        body: '%b',
+        parents: '%P',
+      },
+    });
 
     const commits = log.all.map((entry: unknown) => {
       const e = entry as {
