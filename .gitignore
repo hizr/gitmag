@@ -12,4 +12,4 @@ vitest.config.js
 vitest.config.js.map
 coverage/
 package-lock.json
-
+.idea/
