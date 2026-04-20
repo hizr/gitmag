@@ -28,6 +28,10 @@ export type GraphLine =
       prefix: string;
     };
 
+export function isRenderableConnectorPrefix(prefix: string): boolean {
+  return /[│/\\]/.test(prefix);
+}
+
 /**
  * Build all graph lines from a topologically-sorted commit list (newest first).
  *
@@ -100,7 +104,9 @@ export function buildGraphLines(commits: CommitEntry[]): GraphLine[] {
     // ── Step 1: Converging lanes → close connector BEFORE commit ──
     if (claimingLanes.length > 1) {
       const prefix = collapseConvergingLanes(lanes, claimingLanes);
-      lines.push({ kind: 'connector', prefix });
+      if (isRenderableConnectorPrefix(prefix)) {
+        lines.push({ kind: 'connector', prefix });
+      }
     }
 
     // ── Step 2: Determine commit column ──
@@ -117,7 +123,10 @@ export function buildGraphLines(commits: CommitEntry[]): GraphLine[] {
     const mergeOpened = updateLanesAfterCommit(lanes, column, firstParent, secondParent);
 
     if (mergeOpened) {
-      lines.push({ kind: 'connector', prefix: buildOpenConnector(column, lanes.length) });
+      const prefix = buildOpenConnector(column, lanes.length);
+      if (isRenderableConnectorPrefix(prefix)) {
+        lines.push({ kind: 'connector', prefix });
+      }
     }
   }
 

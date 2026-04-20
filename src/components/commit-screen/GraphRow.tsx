@@ -18,15 +18,18 @@ export function GraphRow({
   isMatchedResult,
   isActiveMatch,
 }: GraphRowProps) {
-  const HASH_W = 8; // 7 chars + 1 space
-  const metaWidth = 22; // date (10) + gap (2) + author (truncated to 10)
+  const HASH_SEGMENT_WIDTH = 9; // marker (1) + hash (7) + trailing space (1)
+  const AUTHOR_SEGMENT_WIDTH = 13; // gap (1) + author (12)
+  const DATE_SEGMENT_WIDTH = 11; // gap (1) + date (10)
 
   // Render ref badges
   const refBadges = commit.refs.map((ref) => `[${ref}]`);
 
   const badgeText = refBadges.length > 0 ? ' ' + refBadges.join(' ') : '';
   const badgeWidth = badgeText.length;
-  const msgWidth = Math.max(maxWidth - prefix.length - HASH_W - metaWidth - badgeWidth - 2, 10);
+  const fixedWidth =
+    prefix.length + HASH_SEGMENT_WIDTH + badgeWidth + AUTHOR_SEGMENT_WIDTH + DATE_SEGMENT_WIDTH;
+  const msgWidth = Math.max(maxWidth - fixedWidth, 1);
 
   // Use diamond symbol for WORKING node
   const isWorking = commit.hash === '__WORKING__';
@@ -62,7 +65,7 @@ export function GraphRow({
   }
 
   return (
-    <Box>
+    <Box width={maxWidth} height={1} overflow="hidden">
       <Text color="yellow" backgroundColor={bgColor}>
         {displayPrefix}
       </Text>
@@ -107,6 +110,7 @@ export function GraphRow({
 
 interface GraphConnectorRowProps {
   readonly prefix: string;
+  readonly maxWidth?: number;
 }
 
 /**
@@ -114,9 +118,9 @@ interface GraphConnectorRowProps {
  * Used to show branch merging, opening, and closing in git log --graph style.
  * e.g. "│ \ " for a merge opening, "│ / " for a merge closing.
  */
-export function GraphConnectorRow({ prefix }: GraphConnectorRowProps) {
+export function GraphConnectorRow({ prefix, maxWidth }: GraphConnectorRowProps) {
   return (
-    <Box>
+    <Box width={maxWidth} height={1} overflow="hidden">
       <Text color="yellow">{prefix}</Text>
     </Box>
   );

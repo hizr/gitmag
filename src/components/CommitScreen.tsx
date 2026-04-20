@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
-import { buildGraphLines } from '../utils/git-graph.js';
+import { buildGraphLines, isRenderableConnectorPrefix } from '../utils/git-graph.js';
 import { FuzzySearchPopup } from './FuzzySearchPopup.js';
 import { Panel } from './common/Panel.js';
 import { GraphRow, GraphConnectorRow } from './commit-screen/GraphRow.js';
@@ -159,6 +159,7 @@ export function CommitScreen({
   const rightWidth = termCols - halfWidth - 2;
 
   const graphInnerH = graphHeight - 2;
+  const graphInnerW = Math.max(termCols - 5, 1);
   const bottomInnerH = bottomHeight - 2;
 
   // ── Cycle focus ──────────────────────────────────────────────────────
@@ -459,7 +460,16 @@ export function CommitScreen({
 
             // Handle connector rows (no commit, just prefix)
             if (line.kind === 'connector') {
-              return <GraphConnectorRow key={`connector-${globalIdx}`} prefix={line.prefix} />;
+              if (!isRenderableConnectorPrefix(line.prefix)) {
+                return null;
+              }
+              return (
+                <GraphConnectorRow
+                  key={`connector-${globalIdx}`}
+                  prefix={line.prefix}
+                  maxWidth={graphInnerW}
+                />
+              );
             }
 
             // Handle commit rows
@@ -485,7 +495,7 @@ export function CommitScreen({
                 prefix={line.prefix}
                 commit={commit}
                 selected={isSelected}
-                maxWidth={termCols - 4}
+                maxWidth={graphInnerW}
                 isMatchedResult={isMatchedResult}
                 isActiveMatch={isActiveMatch}
               />
