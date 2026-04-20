@@ -5,11 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com),
 and this project adheres to [Semantic Versioning](https://semver.org).
 
-## [v0.2.9] - 2026-03-28
+## [Unreleased]
+
+### Added
+
+- Add diff support for local working changes in FileDiffScreen (41f7d36)
+- Git log --graph style rendering with connector rows (c36aa38)
 
 ### Fixed
 
 - Remove manual changelog escaping and add --latest flag (e2ca32d)
+- Prevent scroll jump in graph navigation with connector rows (1c2f6ec)
+- Ensure vite vulnerability audit passes in CI (6e3f841)
+- Restore npm install step in audit script for CI compatibility (10eafa5)
+- Prevent intermittent blank rows in commit graph (183936f)
+
+### Miscellaneous
+
+- Add .idea/ to gitignore (fadb82b)
+- Update bun.lock after adding vite overrides (e1d90c3)
 
 ## [v0.2.8] - 2026-03-27
 
@@ -190,4 +204,4 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 - Update panel border formatting in RepoScreen (cf25603)
 
-[v0.2.9]: https://github.com/hizr/gitmag/releases/tag/v0.2.9[v0.2.8]: https://github.com/hizr/gitmag/releases/tag/v0.2.8[v0.2.7]: https://github.com/hizr/gitmag/releases/tag/v0.2.7[v0.2.6]: https://github.com/hizr/gitmag/releases/tag/v0.2.6[v0.2.5]: https://github.com/hizr/gitmag/releases/tag/v0.2.5[v0.2.4]: https://github.com/hizr/gitmag/releases/tag/v0.2.4[v0.2.2]: https://github.com/hizr/gitmag/releases/tag/v0.2.2[v0.2.1]: https://github.com/hizr/gitmag/releases/tag/v0.2.1[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
+[v0.2.8]: https://github.com/hizr/gitmag/releases/tag/v0.2.8[v0.2.7]: https://github.com/hizr/gitmag/releases/tag/v0.2.7[v0.2.6]: https://github.com/hizr/gitmag/releases/tag/v0.2.6[v0.2.5]: https://github.com/hizr/gitmag/releases/tag/v0.2.5[v0.2.4]: https://github.com/hizr/gitmag/releases/tag/v0.2.4[v0.2.2]: https://github.com/hizr/gitmag/releases/tag/v0.2.2[v0.2.1]: https://github.com/hizr/gitmag/releases/tag/v0.2.1[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
