@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 - Add .idea/ to gitignore (fadb82b)
 - Update bun.lock after adding vite overrides (e1d90c3)
+- Update changelog (527048a)
 
 ## [v0.2.8] - 2026-03-27
 
