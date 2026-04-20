@@ -16,7 +16,7 @@
     "coverage": "vitest run --coverage",
     "dead-code": "knip",
     "duplication": "jscpd src --min-tokens 80 --threshold 0",
-    "audit": "npm install --package-lock-only --ignore-scripts && better-npm-audit audit --level high",
+    "audit": "better-npm-audit audit --level high",
     "version": "npm run build && npx git-cliff -o CHANGELOG.md --config cliff.toml && git add CHANGELOG.md",
     "preversion": "npm run test && npm run lint && npm run build",
     "postversion": "git push --follow-tags"
@@ -38,6 +38,9 @@
     "ink": "^5.2.1",
     "react": "^18.3.1",
     "simple-git": "^3.33.0"
+  },
+  "overrides": {
+    "vite": ">=8.0.5"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.4",
