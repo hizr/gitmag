@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildGraphLines } from '../../src/utils/git-graph.js';
+import { buildGraphLines, isRenderableConnectorPrefix } from '../../src/utils/git-graph.js';
 import type { CommitEntry } from '../../src/data/mockRepos.js';
 
 // Minimal commit factory — only fields git-graph.ts cares about
@@ -165,6 +165,22 @@ describe('buildGraphLines', () => {
         // Should not have commit or column
         expect((line as Record<string, unknown>).commit).toBeUndefined();
         expect((line as Record<string, unknown>).column).toBeUndefined();
+      }
+    }
+  });
+
+  it('all connector prefixes are renderable (never blank rows)', () => {
+    const commits = [
+      commit('merge', ['p1', 'p2']),
+      commit('p1', ['base']),
+      commit('p2', ['base']),
+      commit('base', []),
+    ];
+    const lines = buildGraphLines(commits);
+    const connectors = lines.filter((l) => l.kind === 'connector');
+    for (const line of connectors) {
+      if (line.kind === 'connector') {
+        expect(isRenderableConnectorPrefix(line.prefix)).toBe(true);
       }
     }
   });
