@@ -1,10 +1,10 @@
-import { useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
 import { buildGraphLines } from '../utils/git-graph.js';
 import { FuzzySearchPopup } from './FuzzySearchPopup.js';
 import { Panel } from './common/Panel.js';
-import { GraphRow } from './commit-screen/GraphRow.js';
+import { GraphRow, GraphConnectorRow } from './commit-screen/GraphRow.js';
 import { BranchInfoPanel } from './commit-screen/BranchInfoPanel.js';
 import { CommitInfoPanel } from './commit-screen/CommitInfoPanel.js';
 import { ChangedFilesPanel } from './commit-screen/ChangedFilesPanel.js';
@@ -83,11 +83,23 @@ export function CommitScreen({
 
   const graphLines = buildGraphLines(commitsWithWorking);
 
+  // Build a mapping from "commit index" (index into commits only, skipping connectors)
+  // to "graph line index" (index into all graphLines including connectors)
+  const commitOnlyIndices = graphLines
+    .map((line, i) => (line.kind === 'commit' ? i : -1))
+    .filter((i) => i !== -1);
+
   // ── State ────────────────────────────────────────────────────────
   const [focus, setFocus] = useState<FocusPanel>('graph');
   const [selectedCommitIdx, setSelectedCommitIdx] = useState(
-    Math.min(initialSelectedCommitIdx, Math.max(graphLines.length - 1, 0))
+    Math.min(initialSelectedCommitIdx, Math.max(commitOnlyIndices.length - 1, 0))
   );
+  const selectedCommitIdxRef = useRef(selectedCommitIdx);
+
+  // Keep the ref in sync whenever selectedCommitIdx changes (from any setter)
+  useEffect(() => {
+    selectedCommitIdxRef.current = selectedCommitIdx;
+  }, [selectedCommitIdx]);
   const [graphScroll, setGraphScroll] = useState(0);
   const [infoScroll, setInfoScroll] = useState(0);
   const [selectedFileIdx, setSelectedFileIdx] = useState(initialSelectedFileIdx);
@@ -100,11 +112,23 @@ export function CommitScreen({
   const [activeMatchIdx, setActiveMatchIdx] = useState(-1);
   const [previewCommitIdx, setPreviewCommitIdx] = useState<number | null>(null);
 
-  const selectedCommit: CommitEntry = graphLines[selectedCommitIdx]?.commit ?? repo.commits[0]!;
+  // Helper to get commit from a commit index (not graphLine index)
+  const getCommitAtIdx = (commitIdx: number): CommitEntry => {
+    const graphLineIdx = commitOnlyIndices[commitIdx];
+    if (graphLineIdx != null) {
+      const line = graphLines[graphLineIdx];
+      if (line && line.kind === 'commit') {
+        return line.commit;
+      }
+    }
+    return repo.commits[0]!;
+  };
+
+  const selectedCommit: CommitEntry = getCommitAtIdx(selectedCommitIdx);
 
   // Use preview commit if search is active and user is browsing results, otherwise use selected commit
   const displayCommitIdx = previewCommitIdx ?? selectedCommitIdx;
-  const displayCommit: CommitEntry = graphLines[displayCommitIdx]?.commit ?? repo.commits[0]!;
+  const displayCommit: CommitEntry = getCommitAtIdx(displayCommitIdx);
 
   // Reset bottom-panel scroll when selection changes, but preserve file selection
   // when returning from diff view (indicated by initialSelectedFileIdx > 0)
@@ -180,11 +204,12 @@ export function CommitScreen({
       }
       setActiveMatchIdx(nextIdx);
       const newCommitIdx = matchIndices[nextIdx]!;
+      selectedCommitIdxRef.current = newCommitIdx;
       setSelectedCommitIdx(newCommitIdx);
+      const newGraphLineIdx = commitOnlyIndices[newCommitIdx] ?? 0;
       setGraphScroll((p) => {
-        const next = newCommitIdx;
-        if (next >= p + graphInnerH) return next - graphInnerH + 1;
-        if (next < p) return next;
+        if (newGraphLineIdx < p) return newGraphLineIdx;
+        if (newGraphLineIdx >= p + graphInnerH) return newGraphLineIdx - graphInnerH + 1;
         return p;
       });
     },
@@ -194,18 +219,35 @@ export function CommitScreen({
   // ── Navigate graph rows ───────────────────────────────────────────────
   const navigateGraph = useCallback(
     (direction: 'up' | 'down') => {
-      if (direction === 'up') {
-        setSelectedCommitIdx((p) => Math.max(p - 1, 0));
-        setGraphScroll((p) => Math.min(p, Math.max(selectedCommitIdx - 1, 0)));
-      } else {
-        setSelectedCommitIdx((p) => Math.min(p + 1, graphLines.length - 1));
-        setGraphScroll((p) => {
-          const next = selectedCommitIdx + 1;
-          return next >= p + graphInnerH ? next - graphInnerH + 1 : p;
-        });
-      }
+      const currentIdx = selectedCommitIdxRef.current;
+      const nextCommitIdx =
+        direction === 'up'
+          ? Math.max(currentIdx - 1, 0)
+          : Math.min(currentIdx + 1, commitOnlyIndices.length - 1);
+
+      selectedCommitIdxRef.current = nextCommitIdx;
+      setSelectedCommitIdx(nextCommitIdx);
+
+      // Scroll operates in graphLines space; convert commit index → graphLine index
+      const nextGraphLineIdx = commitOnlyIndices[nextCommitIdx] ?? 0;
+      const maxScroll = Math.max(graphLines.length - graphInnerH, 0);
+      // Keep a scroll margin so connector rows around the selection stay visible.
+      // This prevents multi-line jumps when a connector sits between two commits.
+      const scrollMargin = graphInnerH > 3 ? 1 : 0;
+
+      setGraphScroll((p) => {
+        // Scrolling up: keep margin rows above selection visible
+        if (nextGraphLineIdx < p + scrollMargin) {
+          return Math.max(nextGraphLineIdx - scrollMargin, 0);
+        }
+        // Scrolling down: keep margin rows below selection visible
+        if (nextGraphLineIdx > p + graphInnerH - 1 - scrollMargin) {
+          return Math.min(nextGraphLineIdx - graphInnerH + 1 + scrollMargin, maxScroll);
+        }
+        return p;
+      });
     },
-    [selectedCommitIdx, graphLines.length, graphInnerH]
+    [commitOnlyIndices, graphInnerH, graphLines.length]
   );
 
   // ── Navigate file list ────────────────────────────────────────────────
@@ -388,15 +430,12 @@ export function CommitScreen({
             onSelect={(commitIdx) => {
               setSelectedCommitIdx(commitIdx);
               setSearchOpen(false);
-              // Store the matched indices for n/m navigation
-              // For now, we'll populate matches on next search
               setMatchIndices([commitIdx]);
               setActiveMatchIdx(0);
-              // Adjust scroll to show selected commit
+              const graphLineIdx = commitOnlyIndices[commitIdx] ?? 0;
               setGraphScroll((p) => {
-                const next = commitIdx;
-                if (next >= p + graphInnerH) return next - graphInnerH + 1;
-                if (next < p) return next;
+                if (graphLineIdx < p) return graphLineIdx;
+                if (graphLineIdx >= p + graphInnerH) return graphLineIdx - graphInnerH + 1;
                 return p;
               });
             }}
@@ -417,15 +456,35 @@ export function CommitScreen({
         >
           {visibleGraph.map((line, i) => {
             const globalIdx = graphScroll + i;
-            const isMatchedResult = matchIndices.includes(globalIdx);
-            const isActiveMatch =
-              globalIdx === (activeMatchIdx >= 0 ? matchIndices[activeMatchIdx] : -1);
+
+            // Handle connector rows (no commit, just prefix)
+            if (line.kind === 'connector') {
+              return <GraphConnectorRow key={`connector-${globalIdx}`} prefix={line.prefix} />;
+            }
+
+            // Handle commit rows
+            const commit = line.commit;
+            // matchIndices stores commit indices; convert to graphLine indices for comparison
+            const isMatchedResult = matchIndices.some(
+              (commitIdx) => commitOnlyIndices[commitIdx] === globalIdx
+            );
+            const activeMatchCommitIdx =
+              activeMatchIdx >= 0 ? (matchIndices[activeMatchIdx] ?? -1) : -1;
+            const activeMatchGraphIdx =
+              activeMatchCommitIdx >= 0 ? (commitOnlyIndices[activeMatchCommitIdx] ?? -1) : -1;
+            const isActiveMatch = globalIdx === activeMatchGraphIdx;
+
+            // Check if this commit row is selected
+            // selectedCommitIdx is an index into commitOnlyIndices
+            const graphLineIdxOfSelection = commitOnlyIndices[selectedCommitIdx];
+            const isSelected = globalIdx === graphLineIdxOfSelection;
+
             return (
               <GraphRow
-                key={line.commit.hash}
+                key={commit.hash}
                 prefix={line.prefix}
-                commit={line.commit}
-                selected={globalIdx === selectedCommitIdx}
+                commit={commit}
+                selected={isSelected}
                 maxWidth={termCols - 4}
                 isMatchedResult={isMatchedResult}
                 isActiveMatch={isActiveMatch}

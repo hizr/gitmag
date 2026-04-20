@@ -104,3 +104,20 @@ export function GraphRow({
     </Box>
   );
 }
+
+interface GraphConnectorRowProps {
+  readonly prefix: string;
+}
+
+/**
+ * GraphConnectorRow renders a pure connector row with no commit node.
+ * Used to show branch merging, opening, and closing in git log --graph style.
+ * e.g. "│ \ " for a merge opening, "│ / " for a merge closing.
+ */
+export function GraphConnectorRow({ prefix }: GraphConnectorRowProps) {
+  return (
+    <Box>
+      <Text color="yellow">{prefix}</Text>
+    </Box>
+  );
+}
