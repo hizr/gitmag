@@ -6,6 +6,7 @@ export type FileLine = {
   status: string;
   path: string;
   isHeader?: boolean;
+  stagingState?: 'staged' | 'unstaged' | 'untracked';
 };
 
 export type InfoLine = { label: string; value: string; wrap?: boolean };
@@ -46,15 +47,29 @@ export function buildFileLines(commit: CommitEntry): FileLine[] {
 
   if (staged.length > 0) {
     lines.push({ status: '📦', path: 'Staged', isHeader: true });
-    lines.push(...staged.map((f) => ({ status: f.status, path: f.path })));
+    lines.push(
+      ...staged.map((f) => ({ status: f.status, path: f.path, stagingState: 'staged' as const }))
+    );
   }
   if (unstaged.length > 0) {
     lines.push({ status: '✎', path: 'Unstaged', isHeader: true });
-    lines.push(...unstaged.map((f) => ({ status: f.status, path: f.path })));
+    lines.push(
+      ...unstaged.map((f) => ({
+        status: f.status,
+        path: f.path,
+        stagingState: 'unstaged' as const,
+      }))
+    );
   }
   if (untracked.length > 0) {
     lines.push({ status: '?', path: 'Untracked', isHeader: true });
-    lines.push(...untracked.map((f) => ({ status: f.status, path: f.path })));
+    lines.push(
+      ...untracked.map((f) => ({
+        status: f.status,
+        path: f.path,
+        stagingState: 'untracked' as const,
+      }))
+    );
   }
   return lines;
 }

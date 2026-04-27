@@ -8,6 +8,7 @@ import { GraphRow, GraphConnectorRow } from './commit-screen/GraphRow.js';
 import { BranchInfoPanel } from './commit-screen/BranchInfoPanel.js';
 import { CommitInfoPanel } from './commit-screen/CommitInfoPanel.js';
 import { ChangedFilesPanel } from './commit-screen/ChangedFilesPanel.js';
+import type { Repository } from '../data/Repository.js';
 import {
   handleClipboardSuccess,
   handleClipboardError,
@@ -36,6 +37,8 @@ interface CommitScreenProps {
   ) => void;
   readonly workingChanges?: WorkingChanges | null;
   readonly onPickCommit?: (hash: string) => void;
+  readonly repository?: Repository | null;
+  readonly refreshWorkingChanges?: () => Promise<void>;
 }
 
 export function CommitScreen({
@@ -46,6 +49,8 @@ export function CommitScreen({
   onOpenDiff,
   workingChanges,
   onPickCommit,
+  repository,
+  refreshWorkingChanges,
 }: CommitScreenProps) {
   const { stdout } = useStdout();
   const { exit } = useApp();
@@ -324,6 +329,62 @@ export function CommitScreen({
     [focus, navigateGraph, navigateFiles]
   );
 
+  // ── Toggle stage/unstage handler ──────────────────────────────────────
+  const handleToggleStage = useCallback(
+    async (fileLines: FileLine[]) => {
+      // Only works on the working directory commit and files panel focus
+      if (!repository || displayCommit.hash !== '__WORKING__' || focus !== 'files') {
+        return;
+      }
+
+      const selectedFile = fileLines[selectedFileIdx];
+      if (!selectedFile || selectedFile.isHeader || !selectedFile.stagingState) {
+        return;
+      }
+
+      const filePath = selectedFile.path;
+      try {
+        if (selectedFile.stagingState === 'staged') {
+          // Unstage the file
+          await repository.unstageFile(filePath);
+          setCopyStatus(`Unstaged ${filePath}`);
+        } else {
+          // Stage the file (unstaged or untracked)
+          await repository.stageFile(filePath);
+          setCopyStatus(`Staged ${filePath}`);
+        }
+
+        // Refresh working changes
+        if (refreshWorkingChanges) {
+          await refreshWorkingChanges();
+        }
+
+        // Re-locate the file in the new list and update selection
+        // Note: the file may have moved between groups after staging/unstaging
+        const updatedFileLines = buildFileLines(displayCommit);
+        const newIdx = updatedFileLines.findIndex((f) => f.path === filePath && !f.isHeader);
+        if (newIdx !== -1) {
+          setSelectedFileIdx(newIdx);
+          setFilesScroll((p) => {
+            const next = newIdx;
+            return next >= p + bottomInnerH ? next - bottomInnerH + 1 : p;
+          });
+        } else {
+          // File not found (shouldn't happen); clamp selection
+          setSelectedFileIdx(Math.min(selectedFileIdx, updatedFileLines.length - 1));
+        }
+
+        // Clear status message after 1.5 seconds
+        setTimeout(() => setCopyStatus(null), 1500);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setCopyStatus(`Error: ${message}`);
+        setTimeout(() => setCopyStatus(null), 1500);
+      }
+    },
+    [repository, displayCommit.hash, focus, selectedFileIdx, bottomInnerH, refreshWorkingChanges]
+  );
+
   // ── Keyboard input ────────────────────────────────────────────────────
   useInput((input, key) => {
     if (searchOpen) return;
@@ -361,6 +422,10 @@ export function CommitScreen({
       copyHash();
       return;
     }
+    if (input === '+') {
+      handleToggleStage(allFileLines);
+      return;
+    }
     if (key.backspace || key.delete) {
       handleBackOrDelete();
       return;
@@ -394,10 +459,11 @@ export function CommitScreen({
       </Text>
     );
   } else {
+    const showStageHint = focus === 'files' && displayCommit.hash === '__WORKING__';
     footerNode = (
       <Text color="gray" dimColor>
-        [/] search [up/down] navigate [enter] select/diff [c] copy SHA [p] pick [bksp/del] back [q]
-        quit
+        [/] search [up/down] navigate [enter] select/diff
+        {showStageHint ? ' [+] stage/unstage' : ''} [c] copy SHA [p] pick [bksp/del] back [q] quit
       </Text>
     );
   }

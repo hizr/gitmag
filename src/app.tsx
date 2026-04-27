@@ -36,6 +36,7 @@ export function App({ onPickCommit }: AppProps) {
     phase,
     repository,
     workingChanges,
+    refreshWorkingChanges,
   } = useRepository(process.cwd());
 
   // Derive ScanProgress from useRepository
@@ -136,6 +137,8 @@ export function App({ onPickCommit }: AppProps) {
         }}
         workingChanges={workingChanges}
         onPickCommit={onPickCommit}
+        repository={repository}
+        refreshWorkingChanges={refreshWorkingChanges}
         onOpenDiff={(commit, file, fileIdx, commitIdx) => {
           if (repository) {
             let getDiff: () => Promise<string>;

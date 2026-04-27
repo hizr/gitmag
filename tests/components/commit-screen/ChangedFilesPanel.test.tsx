@@ -468,4 +468,112 @@ describe('ChangedFilesPanel', () => {
     const output = lastFrame();
     expect(output).toContain('file4.ts');
   });
+
+  // ── Staging indicators ────────────────────────────────────────────────────
+
+  it('renders staging indicator for staged files', () => {
+    const fileLines: FileLine[] = [
+      { status: 'A', path: 'new-file.ts', isHeader: false, stagingState: 'staged' },
+    ];
+    const { lastFrame } = render(
+      React.createElement(ChangedFilesPanel, {
+        fileLines,
+        selectedFileIdx: 0,
+        filesScroll: 0,
+        width: 80,
+        height: 15,
+        innerHeight: 13,
+        focused: false,
+      })
+    );
+    const output = lastFrame();
+    // Staging indicator is [●] for staged files
+    expect(output).toContain('●');
+    expect(output).toContain('new-file.ts');
+  });
+
+  it('renders staging indicator for unstaged files', () => {
+    const fileLines: FileLine[] = [
+      { status: 'M', path: 'modified-file.ts', isHeader: false, stagingState: 'unstaged' },
+    ];
+    const { lastFrame } = render(
+      React.createElement(ChangedFilesPanel, {
+        fileLines,
+        selectedFileIdx: 0,
+        filesScroll: 0,
+        width: 80,
+        height: 15,
+        innerHeight: 13,
+        focused: false,
+      })
+    );
+    const output = lastFrame();
+    // Staging indicator is [○] for unstaged files
+    expect(output).toContain('○');
+    expect(output).toContain('modified-file.ts');
+  });
+
+  it('renders staging indicator for untracked files', () => {
+    const fileLines: FileLine[] = [
+      { status: '??', path: 'untracked-file.ts', isHeader: false, stagingState: 'untracked' },
+    ];
+    const { lastFrame } = render(
+      React.createElement(ChangedFilesPanel, {
+        fileLines,
+        selectedFileIdx: 0,
+        filesScroll: 0,
+        width: 80,
+        height: 15,
+        innerHeight: 13,
+        focused: false,
+      })
+    );
+    const output = lastFrame();
+    // Staging indicator is [?] for untracked files
+    expect(output).toContain('?');
+    expect(output).toContain('untracked-file.ts');
+  });
+
+  it('does not render staging indicator for header rows', () => {
+    const fileLines: FileLine[] = [
+      { status: '📦', path: 'Staged', isHeader: true },
+      { status: 'A', path: 'file.ts', isHeader: false, stagingState: 'staged' },
+    ];
+    const { lastFrame } = render(
+      React.createElement(ChangedFilesPanel, {
+        fileLines,
+        selectedFileIdx: 0,
+        filesScroll: 0,
+        width: 80,
+        height: 15,
+        innerHeight: 13,
+        focused: false,
+      })
+    );
+    const output = lastFrame();
+    // Headers should still render but without staging indicators
+    expect(output).toContain('Staged');
+    // The file should have the indicator
+    expect(output).toContain('●');
+  });
+
+  it('does not render staging indicator for files without stagingState', () => {
+    const fileLines: FileLine[] = [{ status: 'M', path: 'file.ts', isHeader: false }];
+    const { lastFrame } = render(
+      React.createElement(ChangedFilesPanel, {
+        fileLines,
+        selectedFileIdx: 0,
+        filesScroll: 0,
+        width: 80,
+        height: 15,
+        innerHeight: 13,
+        focused: false,
+      })
+    );
+    const output = lastFrame();
+    // File should render without staging indicator
+    expect(output).toContain('file.ts');
+    expect(output).not.toContain('●');
+    expect(output).not.toContain('○');
+  });
 });

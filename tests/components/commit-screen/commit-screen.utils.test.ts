@@ -281,6 +281,77 @@ describe('commit-screen.utils', () => {
       expect(stagedHeader).toBeUndefined();
       expect(untrackedHeader).toBeUndefined();
     });
+
+    it('sets stagingState for working commit files', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'A', path: 'new-staged.ts' },
+          { status: 'M', path: 'modified-unstaged.ts' },
+          { status: '??', path: 'untracked.ts' },
+        ],
+      };
+      const fileLines = buildFileLines(commit);
+
+      // Find non-header files and check stagingState
+      const stagedFile = fileLines.find((f) => f.path === 'new-staged.ts' && !f.isHeader);
+      expect(stagedFile?.stagingState).toBe('staged');
+
+      const unstagedFile = fileLines.find((f) => f.path === 'modified-unstaged.ts' && !f.isHeader);
+      expect(unstagedFile?.stagingState).toBe('unstaged');
+
+      const untrackedFile = fileLines.find((f) => f.path === 'untracked.ts' && !f.isHeader);
+      expect(untrackedFile?.stagingState).toBe('untracked');
+    });
+
+    it('does not set stagingState for regular commit files', () => {
+      const commit: CommitEntry = {
+        hash: 'abc123',
+        message: 'test',
+        date: '2026-03-14',
+        author: 'Test',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'M', path: 'file1.ts' },
+          { status: 'A', path: 'file2.ts' },
+        ],
+      };
+      const fileLines = buildFileLines(commit);
+
+      expect(fileLines[0].stagingState).toBeUndefined();
+      expect(fileLines[1].stagingState).toBeUndefined();
+    });
+
+    it('does not set stagingState for header rows in working commit', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'A', path: 'new.ts' },
+          { status: 'M', path: 'modified.ts' },
+        ],
+      };
+      const fileLines = buildFileLines(commit);
+
+      const stagedHeader = fileLines.find((f) => f.isHeader && f.path === 'Staged');
+      expect(stagedHeader?.stagingState).toBeUndefined();
+
+      const unstagedHeader = fileLines.find((f) => f.isHeader && f.path === 'Unstaged');
+      expect(unstagedHeader?.stagingState).toBeUndefined();
+    });
   });
 
   // ── buildInfoLines ────────────────────────────────────────────────────────

@@ -37,8 +37,31 @@ export function ChangedFilesPanel({
             </Box>
           );
         }
+        // Render staging indicator if stagingState is set
+        let stagingIndicator = '';
+        let stagingColor: string | undefined = undefined;
+        if (f.stagingState === 'staged') {
+          stagingIndicator = '[●] ';
+          stagingColor = isSelected ? undefined : 'green';
+        } else if (f.stagingState === 'unstaged') {
+          stagingIndicator = '[○] ';
+          stagingColor = isSelected ? undefined : 'yellow';
+        } else if (f.stagingState === 'untracked') {
+          stagingIndicator = '[?] ';
+          stagingColor = isSelected ? undefined : 'gray';
+        }
+
         return (
           <Box key={`file-${i}`}>
+            {stagingIndicator && (
+              <Text
+                color={stagingColor}
+                dimColor={f.stagingState === 'untracked' && !isSelected}
+                inverse={isSelected}
+              >
+                {stagingIndicator}
+              </Text>
+            )}
             <Text
               color={isSelected ? undefined : (FILE_STATUS_COLOR[f.status] ?? 'white')}
               bold={!isSelected}

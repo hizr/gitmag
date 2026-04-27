@@ -393,6 +393,47 @@ export class Repository {
   }
 
   /**
+   * Stage a file in the working directory for the next commit.
+   * Equivalent to `git add -- <path>`.
+   * @param path Relative path to the file
+   * @throws Error if git add fails
+   */
+  async stageFile(path: string): Promise<void> {
+    try {
+      await this.git.add(path);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Failed to stage file: ${message}`, { cause: err });
+    }
+  }
+
+  /**
+   * Unstage a file from the index.
+   * Uses `git restore --staged -- <path>` (git >= 2.23).
+   * Falls back to `git reset HEAD -- <path>` for older git versions.
+   * @param path Relative path to the file
+   * @throws Error if both commands fail
+   */
+  async unstageFile(path: string): Promise<void> {
+    try {
+      // Try the modern git restore command first
+      await this.git.raw(['restore', '--staged', '--', path]);
+    } catch (err) {
+      // Fallback to git reset for older git versions
+      await this.handleUnstageFailure(path, err);
+    }
+  }
+
+  private async handleUnstageFailure(_path: string, _err: unknown): Promise<void> {
+    try {
+      await this.git.raw(['reset', 'HEAD', '--', _path]);
+    } catch (fallbackErr) {
+      const message = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+      throw new Error(`Failed to unstage file: ${message}`, { cause: fallbackErr });
+    }
+  }
+
+  /**
    * Fetch branch information: current branch, remote tracking branch,
    * ahead/behind counts, HEAD author, and repo path.
    * @param headCommitAuthor Author of the HEAD commit (from commits array)

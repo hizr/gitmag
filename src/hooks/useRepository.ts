@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { RepoEntry, WorkingChanges } from '../data/mockRepos.js';
+import type { RepoEntry, CommitEntry, WorkingChanges, BranchInfo } from '../data/mockRepos.js';
 import { Repository } from '../data/Repository.js';
 
 export interface RepositoryState {
@@ -9,6 +9,7 @@ export interface RepositoryState {
   phase: string;
   repository: Repository | null;
   workingChanges: WorkingChanges | null;
+  refreshWorkingChanges: () => Promise<void>;
 }
 
 function extractErrorMessage(err: unknown): string {
@@ -38,6 +39,7 @@ export function useRepository(path: string): RepositoryState {
     phase: 'Opening repository…',
     repository: null,
     workingChanges: null,
+    refreshWorkingChanges: async () => {},
   });
 
   useEffect(() => {
@@ -47,15 +49,13 @@ export function useRepository(path: string): RepositoryState {
       try {
         // Phase 1: Open repository
         const repo = await Repository.open(path);
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading commits…' }));
-        }
+        if (!isMounted) return;
+        setState((prev) => ({ ...prev, phase: 'Loading commits…' }));
 
         // Phase 2: List commits
         const commits = await repo.listCommits(100);
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Indexing files…' }));
-        }
+        if (!isMounted) return;
+        setState((prev) => ({ ...prev, phase: 'Indexing files…' }));
 
         // Phase 3: Get changed files for all commits in a single batch call
         const changedFilesMap = await repo.getChangedFilesForAllCommits(100);
@@ -63,9 +63,8 @@ export function useRepository(path: string): RepositoryState {
           commit.changedFiles = changedFilesMap.get(commit.hash) || [];
         }
 
-        if (isMounted) {
-          setState((prev) => ({ ...prev, phase: 'Loading metadata…' }));
-        }
+        if (!isMounted) return;
+        setState((prev) => ({ ...prev, phase: 'Loading metadata…' }));
 
         // Phases 4, 5, 6: Run in parallel (all independent of each other)
         const headAuthor = commits.length > 0 ? commits[0].author : 'Unknown';
@@ -75,38 +74,66 @@ export function useRepository(path: string): RepositoryState {
           repo.getBranchInfo(headAuthor),
         ]);
 
-        // Attach refs to commits
-        for (const commit of commits) {
-          commit.refs = refMap.get(commit.hash) || [];
-        }
-
-        if (isMounted) {
-          setState({
-            repos: [
-              {
-                path: repo.getPath(),
-                commits,
-                branchInfo,
-              },
-            ],
-            loading: false,
-            error: null,
-            phase: 'Ready',
-            repository: repo,
-            workingChanges,
-          });
-        }
+        if (!isMounted) return;
+        finishLoadRepository(repo, commits, refMap, workingChanges, branchInfo);
       } catch (err) {
         if (isMounted) {
+          // Cannot avoid nesting here (React callback pattern); suppress sonarjs rule
+
           setState((prev) => ({
             ...prev,
             repos: [],
             loading: false,
             error: extractErrorMessage(err),
             repository: null,
+            // eslint-disable-next-line sonarjs/no-nested-functions
+            refreshWorkingChanges: async () => {},
           }));
         }
       }
+    };
+
+    const finishLoadRepository = (
+      repo: Repository,
+      commits: CommitEntry[],
+      refMap: Map<string, string[]>,
+      workingChanges: WorkingChanges,
+      branchInfo: BranchInfo
+    ) => {
+      // Attach refs to commits
+      for (const commit of commits) {
+        commit.refs = refMap.get(commit.hash) || [];
+      }
+
+      const refreshWorkingChanges = async () => {
+        if (!isMounted) return;
+        try {
+          const updated = await repo.getWorkingChanges();
+          // eslint-disable-next-line sonarjs/no-nested-functions
+          setState((prev) => ({
+            ...prev,
+            workingChanges: updated,
+          }));
+        } catch {
+          // Silently fail; keep existing workingChanges
+        }
+      };
+
+      setState({
+        repos: [
+          {
+            path: repo.getPath(),
+            commits,
+            branchInfo,
+          },
+        ],
+        loading: false,
+        error: null,
+        phase: 'Ready',
+        repository: repo,
+        workingChanges,
+        refreshWorkingChanges,
+      });
     };
 
     loadRepository();
