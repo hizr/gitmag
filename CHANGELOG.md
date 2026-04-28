@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 ### Added
 
+- Add stage/unstage keybinding for working directory files (973c1da)
+
+### Fixed
+
+- Resolve stale closure bug in stage/unstage file handling (968866a)
+- Skip working section headers during file navigation (aabdc7a)
+
+### Performance
+
+- Eliminate TUI full-screen flicker on keypress (30bb75d)
+
+## [v0.3.0] - 2026-04-20
+
+### Added
+
 - Add diff support for local working changes in FileDiffScreen (41f7d36)
 - Git log --graph style rendering with connector rows (c36aa38)
 
@@ -205,4 +220,4 @@ and this project adheres to [Semantic Versioning](https://semver.org).
 
 - Update panel border formatting in RepoScreen (cf25603)
 
-[v0.2.8]: https://github.com/hizr/gitmag/releases/tag/v0.2.8[v0.2.7]: https://github.com/hizr/gitmag/releases/tag/v0.2.7[v0.2.6]: https://github.com/hizr/gitmag/releases/tag/v0.2.6[v0.2.5]: https://github.com/hizr/gitmag/releases/tag/v0.2.5[v0.2.4]: https://github.com/hizr/gitmag/releases/tag/v0.2.4[v0.2.2]: https://github.com/hizr/gitmag/releases/tag/v0.2.2[v0.2.1]: https://github.com/hizr/gitmag/releases/tag/v0.2.1[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
+[v0.3.0]: https://github.com/hizr/gitmag/releases/tag/v0.3.0[v0.2.8]: https://github.com/hizr/gitmag/releases/tag/v0.2.8[v0.2.7]: https://github.com/hizr/gitmag/releases/tag/v0.2.7[v0.2.6]: https://github.com/hizr/gitmag/releases/tag/v0.2.6[v0.2.5]: https://github.com/hizr/gitmag/releases/tag/v0.2.5[v0.2.4]: https://github.com/hizr/gitmag/releases/tag/v0.2.4[v0.2.2]: https://github.com/hizr/gitmag/releases/tag/v0.2.2[v0.2.1]: https://github.com/hizr/gitmag/releases/tag/v0.2.1[v0.1.0]: https://github.com/hizr/gitmag/releases/tag/v0.1.0
