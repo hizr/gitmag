@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { Box, Text } from 'ink';
 import type { CommitEntry } from '../../data/mockRepos.js';
 import { Panel } from '../common/Panel.js';
@@ -11,16 +12,22 @@ interface CommitInfoPanelProps {
   readonly innerHeight: number;
 }
 
-export function CommitInfoPanel({
+export const CommitInfoPanel = memo(function CommitInfoPanel({
   commit,
   width,
   height,
   infoScroll,
   innerHeight,
 }: CommitInfoPanelProps) {
-  const { infoLines, bodyLines } = buildInfoLines(commit);
-  const allInfoLines: string[] = [...infoLines.map((l) => `${l.label}  ${l.value}`), ...bodyLines];
-  const visibleInfo = allInfoLines.slice(infoScroll, infoScroll + innerHeight);
+  const { infoLines, bodyLines } = useMemo(() => buildInfoLines(commit), [commit]);
+  const allInfoLines = useMemo(
+    () => [...infoLines.map((l) => `${l.label}  ${l.value}`), ...bodyLines],
+    [infoLines, bodyLines]
+  );
+  const visibleInfo = useMemo(
+    () => allInfoLines.slice(infoScroll, infoScroll + innerHeight),
+    [allInfoLines, infoScroll, innerHeight]
+  );
 
   return (
     <Panel label="Commit Info" focused={false} width={width} height={height}>
@@ -64,4 +71,4 @@ export function CommitInfoPanel({
       ))}
     </Panel>
   );
-}
+});

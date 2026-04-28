@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Box, Text } from 'ink';
 import { SplashScreen } from './components/SplashScreen.js';
 import { CommitScreen } from './components/CommitScreen.js';
@@ -51,6 +51,51 @@ export function App({ onPickCommit }: AppProps) {
 
   // Handle quit key ('q') when on router (not on splash screen)
   useQuit(screen === 'router');
+
+  const handleBack = useCallback(() => {
+    pop();
+    setSelectedCommitIdx(0);
+    setSelectedFileIdx(0);
+  }, []);
+
+  const handleOpenDiff = useCallback(
+    (commit: CommitEntry, file: ChangedFile, fileIdx: number, commitIdx: number) => {
+      if (repository) {
+        let getDiff: () => Promise<string>;
+
+        // Check if this is the synthetic __WORKING__ commit
+        if (commit.hash === '__WORKING__' && workingChanges) {
+          // Determine file status by looking it up in workingChanges
+          let fileStatus: 'staged' | 'unstaged' | 'untracked' = 'unstaged';
+          if (workingChanges.staged.some((f) => f.path === file.path)) {
+            fileStatus = 'staged';
+          } else if (workingChanges.untracked.some((f) => f.path === file.path)) {
+            fileStatus = 'untracked';
+          }
+          getDiff = () => repository.getWorkingDiff(file.path, fileStatus);
+        } else {
+          // Regular commit: use the standard getDiff
+          getDiff = () => repository.getDiff(commit.hash, file.path);
+        }
+
+        const currentRoute = stack[stack.length - 1];
+        if (currentRoute?.name === 'commit') {
+          push({
+            name: 'diff',
+            repo: currentRoute.repo,
+            commit,
+            file,
+            getDiff,
+            selectedFileIdx: fileIdx,
+            selectedCommitIdx: commitIdx,
+          });
+        }
+        setSelectedFileIdx(fileIdx);
+        setSelectedCommitIdx(commitIdx);
+      }
+    },
+    [repository, workingChanges, stack]
+  );
 
   // No longer need to manage repo list navigation — all screens handle their own input
   // useAppInput only needed for quit key, but that's handled by root shell wrapper
@@ -130,47 +175,12 @@ export function App({ onPickCommit }: AppProps) {
         repo={current.repo}
         initialSelectedCommitIdx={selectedCommitIdx}
         initialSelectedFileIdx={selectedFileIdx}
-        onBack={() => {
-          pop();
-          setSelectedCommitIdx(0);
-          setSelectedFileIdx(0);
-        }}
+        onBack={handleBack}
         workingChanges={workingChanges}
         onPickCommit={onPickCommit}
         repository={repository}
         refreshWorkingChanges={refreshWorkingChanges}
-        onOpenDiff={(commit, file, fileIdx, commitIdx) => {
-          if (repository) {
-            let getDiff: () => Promise<string>;
-
-            // Check if this is the synthetic __WORKING__ commit
-            if (commit.hash === '__WORKING__' && workingChanges) {
-              // Determine file status by looking it up in workingChanges
-              let fileStatus: 'staged' | 'unstaged' | 'untracked' = 'unstaged';
-              if (workingChanges.staged.some((f) => f.path === file.path)) {
-                fileStatus = 'staged';
-              } else if (workingChanges.untracked.some((f) => f.path === file.path)) {
-                fileStatus = 'untracked';
-              }
-              getDiff = () => repository.getWorkingDiff(file.path, fileStatus);
-            } else {
-              // Regular commit: use the standard getDiff
-              getDiff = () => repository.getDiff(commit.hash, file.path);
-            }
-
-            push({
-              name: 'diff',
-              repo: current.repo,
-              commit,
-              file,
-              getDiff,
-              selectedFileIdx: fileIdx,
-              selectedCommitIdx: commitIdx,
-            });
-            setSelectedFileIdx(fileIdx);
-            setSelectedCommitIdx(commitIdx);
-          }
-        }}
+        onOpenDiff={handleOpenDiff}
       />
     );
   }
