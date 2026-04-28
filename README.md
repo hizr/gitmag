@@ -1,4 +1,4 @@
-# Git Magazine (gitmag)
+# Git Magazine (gitmag) Testchange
 
 [![CI](https://github.com/hizr/gitmag/actions/workflows/ci.yml/badge.svg)](https://github.com/hizr/gitmag/actions/workflows/ci.yml)
 [![Release](https://github.com/hizr/gitmag/actions/workflows/release.yml/badge.svg)](https://github.com/hizr/gitmag/actions/workflows/release.yml)

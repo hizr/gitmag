@@ -38,7 +38,7 @@ interface CommitScreenProps {
   readonly workingChanges?: WorkingChanges | null;
   readonly onPickCommit?: (hash: string) => void;
   readonly repository?: Repository | null;
-  readonly refreshWorkingChanges?: () => Promise<void>;
+  readonly refreshWorkingChanges?: () => Promise<WorkingChanges | null>;
 }
 
 export function CommitScreen({
@@ -276,7 +276,7 @@ export function CommitScreen({
   );
 
   // ── Build file lines (needed before useInput handler) ──────────────────
-  const allFileLines = buildFileLines(displayCommit);
+  const allFileLines = buildFileLines(displayCommit, workingChanges || undefined);
 
   // ── Keyboard sub-handlers ─────────────────────────────────────────────
   const handleOpenDiff = useCallback(
@@ -354,14 +354,18 @@ export function CommitScreen({
           setCopyStatus(`Staged ${filePath}`);
         }
 
-        // Refresh working changes
+        // Refresh working changes and get the updated state
+        let updatedWorkingChanges = workingChanges;
         if (refreshWorkingChanges) {
-          await refreshWorkingChanges();
+          const refreshed = await refreshWorkingChanges();
+          if (refreshed) {
+            updatedWorkingChanges = refreshed;
+          }
         }
 
         // Re-locate the file in the new list and update selection
         // Note: the file may have moved between groups after staging/unstaging
-        const updatedFileLines = buildFileLines(displayCommit);
+        const updatedFileLines = buildFileLines(displayCommit, updatedWorkingChanges || undefined);
         const newIdx = updatedFileLines.findIndex((f) => f.path === filePath && !f.isHeader);
         if (newIdx !== -1) {
           setSelectedFileIdx(newIdx);
@@ -382,7 +386,16 @@ export function CommitScreen({
         setTimeout(() => setCopyStatus(null), 1500);
       }
     },
-    [repository, displayCommit.hash, focus, selectedFileIdx, bottomInnerH, refreshWorkingChanges]
+    [
+      repository,
+      displayCommit.hash,
+      focus,
+      selectedFileIdx,
+      bottomInnerH,
+      refreshWorkingChanges,
+      workingChanges,
+      displayCommit,
+    ]
   );
 
   // ── Keyboard input ────────────────────────────────────────────────────
@@ -438,7 +451,7 @@ export function CommitScreen({
   });
 
   // ── Build info lines ─────────────────────────────────────────────────
-  buildInfoLines(displayCommit); // Used by CommitInfoPanel
+  buildInfoLines(displayCommit, workingChanges || undefined); // Used by CommitInfoPanel
 
   // ── Visible slices ────────────────────────────────────────────────────
   const visibleGraph = graphLines.slice(graphScroll, graphScroll + graphInnerH);

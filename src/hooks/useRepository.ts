@@ -9,7 +9,7 @@ export interface RepositoryState {
   phase: string;
   repository: Repository | null;
   workingChanges: WorkingChanges | null;
-  refreshWorkingChanges: () => Promise<void>;
+  refreshWorkingChanges: () => Promise<WorkingChanges | null>;
 }
 
 function extractErrorMessage(err: unknown): string {
@@ -39,7 +39,7 @@ export function useRepository(path: string): RepositoryState {
     phase: 'Opening repository…',
     repository: null,
     workingChanges: null,
-    refreshWorkingChanges: async () => {},
+    refreshWorkingChanges: async () => null,
   });
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export function useRepository(path: string): RepositoryState {
             error: extractErrorMessage(err),
             repository: null,
             // eslint-disable-next-line sonarjs/no-nested-functions
-            refreshWorkingChanges: async () => {},
+            refreshWorkingChanges: async () => null,
           }));
         }
       }
@@ -105,8 +105,8 @@ export function useRepository(path: string): RepositoryState {
         commit.refs = refMap.get(commit.hash) || [];
       }
 
-      const refreshWorkingChanges = async () => {
-        if (!isMounted) return;
+      const refreshWorkingChanges = async (): Promise<WorkingChanges | null> => {
+        if (!isMounted) return null;
         try {
           const updated = await repo.getWorkingChanges();
           // eslint-disable-next-line sonarjs/no-nested-functions
@@ -114,8 +114,10 @@ export function useRepository(path: string): RepositoryState {
             ...prev,
             workingChanges: updated,
           }));
+          return updated;
         } catch {
           // Silently fail; keep existing workingChanges
+          return null;
         }
       };
 
