@@ -1,4 +1,4 @@
-# Git Magazine (gitmag)
+# Git Magazine (gitmag) Testchange
 
 [![CI](https://github.com/hizr/gitmag/actions/workflows/ci.yml/badge.svg)](https://github.com/hizr/gitmag/actions/workflows/ci.yml)
 [![Release](https://github.com/hizr/gitmag/actions/workflows/release.yml/badge.svg)](https://github.com/hizr/gitmag/actions/workflows/release.yml)
@@ -28,7 +28,7 @@ gitmag
 - **Animated splash screen** – Scrambling/revealing "GITMAG" ASCII art title with rainbow colors
 - **Live git integration** – Reads real commits, branches, refs, and working directory changes from your repository
 - **ASCII commit graph** – Lane-based rendering with merge connectors and branch visualization
-- **Working directory view** – Synthetic node showing staged, unstaged, and untracked files
+- **Working directory view** – Synthetic node showing staged, unstaged, and untracked files with per-row staging indicators (`[●]` staged / `[○]` unstaged / `[?]` untracked) and one-key stage/unstage via `+`
 - **Branch info bar** – Current branch, remote tracking status, ahead/behind counts, and HEAD author
 - **Commit explorer** – Interactive navigation through commit history with authors, dates, color-coded ref badges, and messages
 - **Unified diff viewer** – Color-coded additions/deletions, toggleable line numbers, and smooth scrolling
@@ -39,20 +39,21 @@ gitmag
 
 ## Keyboard Controls
 
-| Key            | Screen         | Action                        |
-| -------------- | -------------- | ----------------------------- |
-| `↑`            | All            | Move up                       |
-| `↓`            | All            | Move down                     |
-| `Tab`          | CommitScreen   | Cycle focus (graph → files)   |
-| `Enter`        | CommitScreen   | View diff for selected file   |
-| `/`            | CommitScreen   | Open fuzzy search             |
-| `ESC`          | CommitScreen   | Close search or clear results |
-| `n` / `m`      | CommitScreen   | Next/previous search match    |
-| `c`            | CommitScreen   | Copy commit SHA to clipboard  |
-| `p`            | CommitScreen   | Pick commit (return hash)     |
-| `l`            | FileDiffScreen | Toggle line numbers           |
-| `Bksp` / `Del` | All            | Go back to previous screen    |
-| `q`            | All            | Quit application              |
+| Key            | Screen         | Action                             |
+| -------------- | -------------- | ---------------------------------- |
+| `↑`            | All            | Move up                            |
+| `↓`            | All            | Move down                          |
+| `Tab`          | CommitScreen   | Cycle focus (graph → files)        |
+| `Enter`        | CommitScreen   | View diff for selected file        |
+| `+`            | CommitScreen   | Stage / unstage file (working dir) |
+| `/`            | CommitScreen   | Open fuzzy search                  |
+| `ESC`          | CommitScreen   | Close search or clear results      |
+| `n` / `m`      | CommitScreen   | Next/previous search match         |
+| `c`            | CommitScreen   | Copy commit SHA to clipboard       |
+| `p`            | CommitScreen   | Pick commit (return hash)          |
+| `l`            | FileDiffScreen | Toggle line numbers                |
+| `Bksp` / `Del` | All            | Go back to previous screen         |
+| `q`            | All            | Quit application                   |
 
 ## Installation & Setup
 

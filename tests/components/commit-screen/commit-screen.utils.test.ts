@@ -7,7 +7,7 @@ import {
   buildInfoLines,
   FILE_STATUS_COLOR,
 } from '../../../src/components/commit-screen/commit-screen.utils.js';
-import type { CommitEntry, ChangedFile } from '../../../src/data/mockRepos.js';
+import type { CommitEntry, ChangedFile, WorkingChanges } from '../../../src/data/mockRepos.js';
 
 describe('commit-screen.utils', () => {
   // ── handleClipboardSuccess ────────────────────────────────────────────────
@@ -281,6 +281,178 @@ describe('commit-screen.utils', () => {
       expect(stagedHeader).toBeUndefined();
       expect(untrackedHeader).toBeUndefined();
     });
+
+    it('sets stagingState for working commit files', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'A', path: 'new-staged.ts' },
+          { status: 'M', path: 'modified-unstaged.ts' },
+          { status: '??', path: 'untracked.ts' },
+        ],
+      };
+      const fileLines = buildFileLines(commit);
+
+      // Find non-header files and check stagingState
+      const stagedFile = fileLines.find((f) => f.path === 'new-staged.ts' && !f.isHeader);
+      expect(stagedFile?.stagingState).toBe('staged');
+
+      const unstagedFile = fileLines.find((f) => f.path === 'modified-unstaged.ts' && !f.isHeader);
+      expect(unstagedFile?.stagingState).toBe('unstaged');
+
+      const untrackedFile = fileLines.find((f) => f.path === 'untracked.ts' && !f.isHeader);
+      expect(untrackedFile?.stagingState).toBe('untracked');
+    });
+
+    it('does not set stagingState for regular commit files', () => {
+      const commit: CommitEntry = {
+        hash: 'abc123',
+        message: 'test',
+        date: '2026-03-14',
+        author: 'Test',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'M', path: 'file1.ts' },
+          { status: 'A', path: 'file2.ts' },
+        ],
+      };
+      const fileLines = buildFileLines(commit);
+
+      expect(fileLines[0].stagingState).toBeUndefined();
+      expect(fileLines[1].stagingState).toBeUndefined();
+    });
+
+    it('does not set stagingState for header rows in working commit', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'A', path: 'new.ts' },
+          { status: 'M', path: 'modified.ts' },
+        ],
+      };
+      const fileLines = buildFileLines(commit);
+
+      const stagedHeader = fileLines.find((f) => f.isHeader && f.path === 'Staged');
+      expect(stagedHeader?.stagingState).toBeUndefined();
+
+      const unstagedHeader = fileLines.find((f) => f.isHeader && f.path === 'Unstaged');
+      expect(unstagedHeader?.stagingState).toBeUndefined();
+    });
+
+    it('uses WorkingChanges for segregating __WORKING__ commit files', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'A', path: 'new.ts' },
+          { status: 'M', path: 'modified.ts' },
+          { status: '??', path: 'untracked.ts' },
+        ],
+      };
+      const workingChanges: WorkingChanges = {
+        staged: [{ status: 'A', path: 'new.ts' }],
+        unstaged: [{ status: 'M', path: 'modified.ts' }],
+        untracked: [{ status: '??', path: 'untracked.ts' }],
+      };
+      const fileLines = buildFileLines(commit, workingChanges);
+
+      // Verify it uses WorkingChanges for grouping
+      const stagedFile = fileLines.find((f) => f.path === 'new.ts' && !f.isHeader);
+      expect(stagedFile?.stagingState).toBe('staged');
+
+      const unstagedFile = fileLines.find((f) => f.path === 'modified.ts' && !f.isHeader);
+      expect(unstagedFile?.stagingState).toBe('unstaged');
+
+      const untrackedFile = fileLines.find((f) => f.path === 'untracked.ts' && !f.isHeader);
+      expect(untrackedFile?.stagingState).toBe('untracked');
+    });
+
+    it('preserves file order within each section when using WorkingChanges', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [],
+      };
+      const workingChanges: WorkingChanges = {
+        staged: [
+          { status: 'A', path: 'file1.ts' },
+          { status: 'A', path: 'file2.ts' },
+        ],
+        unstaged: [
+          { status: 'M', path: 'file3.ts' },
+          { status: 'M', path: 'file4.ts' },
+        ],
+        untracked: [],
+      };
+      const fileLines = buildFileLines(commit, workingChanges);
+
+      // Find staged files (skip header)
+      const stagedFiles = fileLines.filter(
+        (f) => !f.isHeader && f.path !== 'Staged' && f.stagingState === 'staged'
+      );
+      expect(stagedFiles[0]?.path).toBe('file1.ts');
+      expect(stagedFiles[1]?.path).toBe('file2.ts');
+
+      // Find unstaged files (skip header)
+      const unstagedFiles = fileLines.filter(
+        (f) => !f.isHeader && f.path !== 'Unstaged' && f.stagingState === 'unstaged'
+      );
+      expect(unstagedFiles[0]?.path).toBe('file3.ts');
+      expect(unstagedFiles[1]?.path).toBe('file4.ts');
+    });
+
+    it('falls back to inferring from status codes when WorkingChanges not provided', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'A', path: 'new.ts' },
+          { status: 'M', path: 'modified.ts' },
+          { status: '??', path: 'untracked.ts' },
+        ],
+      };
+      // Call without WorkingChanges (undefined)
+      const fileLines = buildFileLines(commit);
+
+      // Should still work by inferring from status codes
+      const stagedFile = fileLines.find((f) => f.path === 'new.ts' && !f.isHeader);
+      expect(stagedFile?.stagingState).toBe('staged');
+
+      const unstagedFile = fileLines.find((f) => f.path === 'modified.ts' && !f.isHeader);
+      expect(unstagedFile?.stagingState).toBe('unstaged');
+
+      const untrackedFile = fileLines.find((f) => f.path === 'untracked.ts' && !f.isHeader);
+      expect(untrackedFile?.stagingState).toBe('untracked');
+    });
   });
 
   // ── buildInfoLines ────────────────────────────────────────────────────────
@@ -548,6 +720,68 @@ describe('commit-screen.utils', () => {
       };
       const result = buildInfoLines(commit);
       expect(result.bodyLines).toEqual([]);
+    });
+
+    it('uses WorkingChanges for counting files when provided', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [], // Empty; will use WorkingChanges
+      };
+      const workingChanges: WorkingChanges = {
+        staged: [
+          { status: 'A', path: 'new1.ts' },
+          { status: 'A', path: 'new2.ts' },
+        ],
+        unstaged: [{ status: 'M', path: 'modified.ts' }],
+        untracked: [
+          { status: '??', path: 'untracked1.ts' },
+          { status: '??', path: 'untracked2.ts' },
+        ],
+      };
+      const result = buildInfoLines(commit, workingChanges);
+
+      const stagedLine = result.infoLines.find((l) => l.label === 'Staged ');
+      expect(stagedLine?.value).toBe('2 file(s)');
+
+      const unstagedLine = result.infoLines.find((l) => l.label === 'Unstaged');
+      expect(unstagedLine?.value).toBe('1 file(s)');
+
+      const untrackedLine = result.infoLines.find((l) => l.label === 'Untracked');
+      expect(untrackedLine?.value).toBe('2 file(s)');
+    });
+
+    it('falls back to inferring from changedFiles when WorkingChanges not provided', () => {
+      const commit: CommitEntry = {
+        hash: '__WORKING__',
+        message: '[WORKING] Local changes',
+        date: '2026-03-14',
+        author: 'you',
+        body: '',
+        parentHash: [],
+        refs: [],
+        changedFiles: [
+          { status: 'A', path: 'new.ts' },
+          { status: 'M', path: 'modified.ts' },
+          { status: '??', path: 'untracked.ts' },
+        ],
+      };
+      // Call without WorkingChanges
+      const result = buildInfoLines(commit);
+
+      const stagedLine = result.infoLines.find((l) => l.label === 'Staged ');
+      expect(stagedLine?.value).toBe('1 file(s)');
+
+      const unstagedLine = result.infoLines.find((l) => l.label === 'Unstaged');
+      expect(unstagedLine?.value).toBe('1 file(s)');
+
+      const untrackedLine = result.infoLines.find((l) => l.label === 'Untracked');
+      expect(untrackedLine?.value).toBe('1 file(s)');
     });
   });
 

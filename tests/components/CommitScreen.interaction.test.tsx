@@ -230,6 +230,59 @@ describe('CommitScreen interactions', () => {
     );
   });
 
+  it('navigates over working section headers in one arrow key press', async () => {
+    const workingChanges: WorkingChanges = {
+      staged: [{ status: 'A', path: 'src/new.ts' }],
+      unstaged: [{ status: 'M', path: 'src/mod.ts' }],
+      untracked: [],
+    };
+    const onOpenDiff = vi.fn();
+    mounted.push(
+      render(
+        React.createElement(CommitScreen, {
+          repo: MOCK_REPO,
+          onBack: vi.fn(),
+          onOpenDiff,
+          workingChanges,
+        })
+      )
+    );
+
+    // Enter files panel at WORKING commit
+    await send('', { return: true });
+    await flush();
+
+    // Initial selection is the first header row. Move once to first staged file.
+    await send('', { downArrow: true });
+    await flush();
+
+    // From first staged file, one Down should skip "Unstaged" header and land on file
+    await send('', { downArrow: true });
+    await flush();
+    await send('', { return: true });
+
+    expect(onOpenDiff).toHaveBeenCalledWith(
+      expect.objectContaining({ hash: '__WORKING__' }),
+      expect.objectContaining({ path: 'src/mod.ts' }),
+      3,
+      0
+    );
+
+    onOpenDiff.mockClear();
+
+    // One Up should skip header back to staged file
+    await send('', { upArrow: true });
+    await flush();
+    await send('', { return: true });
+
+    expect(onOpenDiff).toHaveBeenCalledWith(
+      expect.objectContaining({ hash: '__WORKING__' }),
+      expect.objectContaining({ path: 'src/new.ts' }),
+      1,
+      0
+    );
+  });
+
   it('renders footer text for default and search match states', async () => {
     const app = render(React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: vi.fn() }));
     mounted.push(app);

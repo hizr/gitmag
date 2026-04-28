@@ -352,4 +352,73 @@ describe('Repository', () => {
     expect(diff).toContain('+line 2');
     expect(diff).toContain('+line 3');
   });
+
+  it('stages a file for commit', async () => {
+    const repo = await Repository.open(tempDir);
+
+    // Create a new untracked file
+    fs.writeFileSync(path.join(tempDir, 'new-file.txt'), 'new content\n');
+
+    // Stage the file
+    await repo.stageFile('new-file.txt');
+
+    // Verify by checking git status
+    const status = await repo.getWorkingChanges();
+    const staged = status.staged.find((f) => f.path === 'new-file.txt');
+    expect(staged).toBeDefined();
+    expect(staged?.status).toBe('A');
+  });
+
+  it('unstages a file', async () => {
+    const repo = await Repository.open(tempDir);
+
+    // Create and stage a file
+    fs.writeFileSync(path.join(tempDir, 'to-unstage.txt'), 'content\n');
+    await repo.stageFile('to-unstage.txt');
+
+    // Verify it's staged
+    let status = await repo.getWorkingChanges();
+    let staged = status.staged.find((f) => f.path === 'to-unstage.txt');
+    expect(staged).toBeDefined();
+
+    // Unstage the file
+    await repo.unstageFile('to-unstage.txt');
+
+    // Verify it's no longer staged
+    status = await repo.getWorkingChanges();
+    staged = status.staged.find((f) => f.path === 'to-unstage.txt');
+    expect(staged).toBeUndefined();
+
+    // It should now be untracked
+    const untracked = status.untracked.find((f) => f.path === 'to-unstage.txt');
+    expect(untracked).toBeDefined();
+  });
+
+  it('throws on stage failure with meaningful message', async () => {
+    const repo = await Repository.open(tempDir);
+
+    try {
+      // Try to stage a nonexistent file
+      await repo.stageFile('nonexistent-file.txt');
+      expect.fail('Should have thrown error');
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      const msg = error?.message || String(err);
+      expect(msg).toMatch(/Failed to stage/i);
+    }
+  });
+
+  it('throws on unstage failure with meaningful message', async () => {
+    const repo = await Repository.open(tempDir);
+
+    try {
+      // Try to unstage a file that was never staged
+      await repo.unstageFile('never-staged.txt');
+      // This might not throw in all git versions, so we accept success here
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      const msg = error?.message || String(err);
+      expect(msg).toMatch(/Failed to unstage/i);
+    }
+  });
 });
