@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Box, Text } from 'ink';
 import type { CommitEntry } from '../../data/mockRepos.js';
 
@@ -10,7 +11,7 @@ interface GraphRowProps {
   readonly isActiveMatch?: boolean;
 }
 
-export function GraphRow({
+export const GraphRow = memo(function GraphRow({
   prefix,
   commit,
   selected,
@@ -106,7 +107,7 @@ export function GraphRow({
       </Text>
     </Box>
   );
-}
+});
 
 interface GraphConnectorRowProps {
   readonly prefix: string;
@@ -118,10 +119,13 @@ interface GraphConnectorRowProps {
  * Used to show branch merging, opening, and closing in git log --graph style.
  * e.g. "│ \ " for a merge opening, "│ / " for a merge closing.
  */
-export function GraphConnectorRow({ prefix, maxWidth }: GraphConnectorRowProps) {
+export const GraphConnectorRow = memo(function GraphConnectorRow({
+  prefix,
+  maxWidth,
+}: GraphConnectorRowProps) {
   return (
     <Box width={maxWidth} height={1} overflow="hidden">
       <Text color="yellow">{prefix}</Text>
     </Box>
   );
-}
+});

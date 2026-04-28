@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Box, Text } from 'ink';
 import type { BranchInfo } from '../../data/mockRepos.js';
 import { Panel } from '../common/Panel.js';
@@ -7,7 +8,10 @@ interface BranchInfoPanelProps {
   readonly width: number;
 }
 
-export function BranchInfoPanel({ branchInfo, width }: BranchInfoPanelProps) {
+export const BranchInfoPanel = memo(function BranchInfoPanel({
+  branchInfo,
+  width,
+}: BranchInfoPanelProps) {
   if (!branchInfo) {
     return (
       <Panel label="Branch Info" focused={false} width={width} height={5}>
@@ -68,4 +72,4 @@ export function BranchInfoPanel({ branchInfo, width }: BranchInfoPanelProps) {
       </Box>
     </Panel>
   );
-}
+});

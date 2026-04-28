@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { Box, Text } from 'ink';
 import { Panel } from '../common/Panel.js';
 import { FILE_STATUS_COLOR, type FileLine } from './commit-screen.utils.js';
@@ -12,7 +13,7 @@ interface ChangedFilesPanelProps {
   readonly focused: boolean;
 }
 
-export function ChangedFilesPanel({
+export const ChangedFilesPanel = memo(function ChangedFilesPanel({
   fileLines,
   selectedFileIdx,
   filesScroll,
@@ -21,7 +22,10 @@ export function ChangedFilesPanel({
   innerHeight,
   focused,
 }: ChangedFilesPanelProps) {
-  const visibleFiles = fileLines.slice(filesScroll, filesScroll + innerHeight);
+  const visibleFiles = useMemo(
+    () => fileLines.slice(filesScroll, filesScroll + innerHeight),
+    [fileLines, filesScroll, innerHeight]
+  );
 
   return (
     <Panel label="Changed Files" focused={focused} width={width} height={height}>
@@ -93,4 +97,4 @@ export function ChangedFilesPanel({
       ))}
     </Panel>
   );
-}
+});

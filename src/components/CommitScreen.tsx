@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
 import { buildGraphLines, isRenderableConnectorPrefix } from '../utils/git-graph.js';
@@ -14,7 +14,6 @@ import {
   handleClipboardError,
   handleModuleError,
   buildFileLines,
-  buildInfoLines,
   type FileLine,
 } from './commit-screen/commit-screen.utils.js';
 
@@ -58,41 +57,43 @@ export function CommitScreen({
   const termRows = Math.max(stdout.rows ?? 24, 24);
 
   // ── Create synthetic WORKING node if there are changes ─────────────────
-  const hasChanges =
-    workingChanges &&
-    (workingChanges.staged.length > 0 ||
-      workingChanges.unstaged.length > 0 ||
-      workingChanges.untracked.length > 0);
-
-  const syntheticWorkingCommit: CommitEntry | null = hasChanges
-    ? {
-        hash: '__WORKING__',
-        message: '[WORKING] Local changes',
-        date: new Date().toISOString().split('T')[0],
-        author: 'you',
-        body: '',
-        parentHash: repo.commits.length > 0 ? [repo.commits[0].hash] : [],
-        refs: [],
-        changedFiles: [
-          ...workingChanges.staged,
-          ...workingChanges.unstaged,
-          ...workingChanges.untracked,
-        ],
-      }
-    : null;
+  const syntheticWorkingCommit = useMemo<CommitEntry | null>(() => {
+    const hasChanges =
+      workingChanges &&
+      (workingChanges.staged.length > 0 ||
+        workingChanges.unstaged.length > 0 ||
+        workingChanges.untracked.length > 0);
+    if (!hasChanges) return null;
+    return {
+      hash: '__WORKING__',
+      message: '[WORKING] Local changes',
+      date: new Date().toISOString().split('T')[0],
+      author: 'you',
+      body: '',
+      parentHash: repo.commits.length > 0 ? [repo.commits[0]!.hash] : [],
+      refs: [],
+      changedFiles: [
+        ...workingChanges!.staged,
+        ...workingChanges!.unstaged,
+        ...workingChanges!.untracked,
+      ],
+    };
+  }, [workingChanges, repo.commits]);
 
   // Prepend WORKING node if it exists
-  const commitsWithWorking = syntheticWorkingCommit
-    ? [syntheticWorkingCommit, ...repo.commits]
-    : repo.commits;
+  const commitsWithWorking = useMemo(
+    () => (syntheticWorkingCommit ? [syntheticWorkingCommit, ...repo.commits] : repo.commits),
+    [syntheticWorkingCommit, repo.commits]
+  );
 
-  const graphLines = buildGraphLines(commitsWithWorking);
+  const graphLines = useMemo(() => buildGraphLines(commitsWithWorking), [commitsWithWorking]);
 
   // Build a mapping from "commit index" (index into commits only, skipping connectors)
   // to "graph line index" (index into all graphLines including connectors)
-  const commitOnlyIndices = graphLines
-    .map((line, i) => (line.kind === 'commit' ? i : -1))
-    .filter((i) => i !== -1);
+  const commitOnlyIndices = useMemo(
+    () => graphLines.map((line, i) => (line.kind === 'commit' ? i : -1)).filter((i) => i !== -1),
+    [graphLines]
+  );
 
   // ── State ────────────────────────────────────────────────────────
   const [focus, setFocus] = useState<FocusPanel>('graph');
@@ -118,33 +119,42 @@ export function CommitScreen({
   const [previewCommitIdx, setPreviewCommitIdx] = useState<number | null>(null);
 
   // Helper to get commit from a commit index (not graphLine index)
-  const getCommitAtIdx = (commitIdx: number): CommitEntry => {
-    const graphLineIdx = commitOnlyIndices[commitIdx];
-    if (graphLineIdx != null) {
-      const line = graphLines[graphLineIdx];
-      if (line && line.kind === 'commit') {
-        return line.commit;
+  const getCommitAtIdx = useCallback(
+    (commitIdx: number): CommitEntry => {
+      const graphLineIdx = commitOnlyIndices[commitIdx];
+      if (graphLineIdx != null) {
+        const line = graphLines[graphLineIdx];
+        if (line && line.kind === 'commit') {
+          return line.commit;
+        }
       }
-    }
-    return repo.commits[0]!;
-  };
+      return repo.commits[0]!;
+    },
+    [commitOnlyIndices, graphLines, repo.commits]
+  );
 
-  const selectedCommit: CommitEntry = getCommitAtIdx(selectedCommitIdx);
+  const selectedCommit = useMemo(
+    () => getCommitAtIdx(selectedCommitIdx),
+    [getCommitAtIdx, selectedCommitIdx]
+  );
 
   // Use preview commit if search is active and user is browsing results, otherwise use selected commit
   const displayCommitIdx = previewCommitIdx ?? selectedCommitIdx;
-  const displayCommit: CommitEntry = getCommitAtIdx(displayCommitIdx);
+  const displayCommit = useMemo(
+    () => getCommitAtIdx(displayCommitIdx),
+    [getCommitAtIdx, displayCommitIdx]
+  );
 
-  // Reset bottom-panel scroll when selection changes, but preserve file selection
-  // when returning from diff view (indicated by initialSelectedFileIdx > 0)
-  useEffect(() => {
+  // Reset bottom-panel scroll when selection changes.
+  // Inlined directly into navigation handlers to avoid a follow-up render.
+  // (Preserved as a helper function so all three call-sites share one path.)
+  const resetBottomPanels = useCallback(() => {
     setInfoScroll(0);
     setFilesScroll(0);
-    // Only reset file selection if we're not returning from a diff view
     if (initialSelectedFileIdx === 0) {
       setSelectedFileIdx(0);
     }
-  }, [selectedCommitIdx, initialSelectedFileIdx]);
+  }, [initialSelectedFileIdx]);
 
   // Restore focus to 'files' when returning from diff view
   useEffect(() => {
@@ -154,18 +164,36 @@ export function CommitScreen({
   }, [initialSelectedFileIdx]);
 
   // ── Layout dimensions ────────────────────────────────────────────────
-  const availableRows = termRows - 4; // header (2) + footer (2)
-  const branchPanelHeight = 5; // Fixed height for branch info
-  const remainingRows = Math.max(availableRows - branchPanelHeight - 1, 10); // After branch panel + gap
-  const graphHeight = Math.max(Math.floor(remainingRows * 0.4), 5);
-  const bottomHeight = Math.max(remainingRows - graphHeight, 5);
-  const halfWidth = Math.floor((termCols - 2) / 2);
-  const leftWidth = halfWidth;
-  const rightWidth = termCols - halfWidth - 2;
-
-  const graphInnerH = graphHeight - 2;
-  const graphInnerW = Math.max(termCols - 5, 1);
-  const bottomInnerH = bottomHeight - 2;
+  const {
+    graphHeight,
+    bottomHeight,
+    leftWidth,
+    rightWidth,
+    graphInnerH,
+    graphInnerW,
+    bottomInnerH,
+  } = useMemo(() => {
+    const availableRows = termRows - 4; // header (2) + footer (2)
+    const branchPanelHeight = 5; // Fixed height for branch info
+    const remainingRows = Math.max(availableRows - branchPanelHeight - 1, 10); // After branch panel + gap
+    const graphHeight = Math.max(Math.floor(remainingRows * 0.4), 5);
+    const bottomHeight = Math.max(remainingRows - graphHeight, 5);
+    const halfWidth = Math.floor((termCols - 2) / 2);
+    const leftWidth = halfWidth;
+    const rightWidth = termCols - halfWidth - 2;
+    const graphInnerH = graphHeight - 2;
+    const graphInnerW = Math.max(termCols - 5, 1);
+    const bottomInnerH = bottomHeight - 2;
+    return {
+      graphHeight,
+      bottomHeight,
+      leftWidth,
+      rightWidth,
+      graphInnerH,
+      graphInnerW,
+      bottomInnerH,
+    };
+  }, [termCols, termRows]);
 
   // ── Cycle focus ──────────────────────────────────────────────────────
   const cycleTab = useCallback(() => {
@@ -212,6 +240,7 @@ export function CommitScreen({
       const newCommitIdx = matchIndices[nextIdx]!;
       selectedCommitIdxRef.current = newCommitIdx;
       setSelectedCommitIdx(newCommitIdx);
+      resetBottomPanels();
       const newGraphLineIdx = commitOnlyIndices[newCommitIdx] ?? 0;
       setGraphScroll((p) => {
         if (newGraphLineIdx < p) return newGraphLineIdx;
@@ -219,7 +248,7 @@ export function CommitScreen({
         return p;
       });
     },
-    [matchIndices, activeMatchIdx, graphInnerH]
+    [matchIndices, activeMatchIdx, graphInnerH, resetBottomPanels]
   );
 
   // ── Navigate graph rows ───────────────────────────────────────────────
@@ -233,6 +262,7 @@ export function CommitScreen({
 
       selectedCommitIdxRef.current = nextCommitIdx;
       setSelectedCommitIdx(nextCommitIdx);
+      resetBottomPanels();
 
       // Scroll operates in graphLines space; convert commit index → graphLine index
       const nextGraphLineIdx = commitOnlyIndices[nextCommitIdx] ?? 0;
@@ -253,7 +283,7 @@ export function CommitScreen({
         return p;
       });
     },
-    [commitOnlyIndices, graphInnerH, graphLines.length]
+    [commitOnlyIndices, graphInnerH, graphLines.length, resetBottomPanels]
   );
 
   // ── Navigate file list ────────────────────────────────────────────────
@@ -291,7 +321,10 @@ export function CommitScreen({
   );
 
   // ── Build file lines (needed before useInput handler) ──────────────────
-  const allFileLines = buildFileLines(displayCommit, workingChanges || undefined);
+  const allFileLines = useMemo(
+    () => buildFileLines(displayCommit, workingChanges || undefined),
+    [displayCommit, workingChanges]
+  );
 
   // ── Keyboard sub-handlers ─────────────────────────────────────────────
   const handleOpenDiff = useCallback(
@@ -466,35 +499,40 @@ export function CommitScreen({
   });
 
   // ── Build info lines ─────────────────────────────────────────────────
-  buildInfoLines(displayCommit, workingChanges || undefined); // Used by CommitInfoPanel
+  // (consumed internally by CommitInfoPanel; built here only so the call
+  //  site is obvious — CommitInfoPanel calls buildInfoLines itself)
 
   // ── Visible slices ────────────────────────────────────────────────────
-  const visibleGraph = graphLines.slice(graphScroll, graphScroll + graphInnerH);
+  const visibleGraph = useMemo(
+    () => graphLines.slice(graphScroll, graphScroll + graphInnerH),
+    [graphLines, graphScroll, graphInnerH]
+  );
 
   // ── Footer node ────────────────────────────────────────────────────────
-  let footerNode: ReactNode;
-  if (copyStatus) {
-    footerNode = (
-      <Text color="green" bold>
-        {copyStatus}
-      </Text>
-    );
-  } else if (matchIndices.length > 0) {
-    footerNode = (
-      <Text color="gray" dimColor>
-        [n/m] next/prev match ({matchIndices.length} results) [/] new search [ESC] clear [up/down]
-        navigate [q] quit
-      </Text>
-    );
-  } else {
+  const footerNode = useMemo<ReactNode>(() => {
+    if (copyStatus) {
+      return (
+        <Text color="green" bold>
+          {copyStatus}
+        </Text>
+      );
+    }
+    if (matchIndices.length > 0) {
+      return (
+        <Text color="gray" dimColor>
+          [n/m] next/prev match ({matchIndices.length} results) [/] new search [ESC] clear [up/down]
+          navigate [q] quit
+        </Text>
+      );
+    }
     const showStageHint = focus === 'files' && displayCommit.hash === '__WORKING__';
-    footerNode = (
+    return (
       <Text color="gray" dimColor>
         [/] search [up/down] navigate [enter] select/diff
         {showStageHint ? ' [+] stage/unstage' : ''} [c] copy SHA [p] pick [bksp/del] back [q] quit
       </Text>
     );
-  }
+  }, [copyStatus, matchIndices.length, focus, displayCommit.hash]);
   return (
     <Box flexDirection="column" width={termCols} height={termRows} paddingX={1}>
       {/* ── Header ───────────────────────────────────────────────────── */}
@@ -527,6 +565,7 @@ export function CommitScreen({
               setSearchOpen(false);
               setMatchIndices([commitIdx]);
               setActiveMatchIdx(0);
+              resetBottomPanels();
               const graphLineIdx = commitOnlyIndices[commitIdx] ?? 0;
               setGraphScroll((p) => {
                 if (graphLineIdx < p) return graphLineIdx;
