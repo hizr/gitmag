@@ -261,18 +261,33 @@ export function CommitScreen({
     (direction: 'up' | 'down', fileLines: FileLine[]) => {
       if (fileLines.length === 0) return;
       const maxIdx = fileLines.length - 1;
-      if (direction === 'up') {
-        setSelectedFileIdx((p) => Math.max(p - 1, 0));
-        setFilesScroll((p) => Math.min(p, Math.max(selectedFileIdx - 1, 0)));
-      } else {
-        setSelectedFileIdx((p) => Math.min(p + 1, maxIdx));
-        setFilesScroll((p) => {
-          const next = selectedFileIdx + 1;
-          return next >= p + bottomInnerH ? next - bottomInnerH + 1 : p;
+      setSelectedFileIdx((currentIdx) => {
+        let nextIdx = currentIdx;
+
+        while (true) {
+          const candidateIdx =
+            direction === 'up' ? Math.max(nextIdx - 1, 0) : Math.min(nextIdx + 1, maxIdx);
+
+          if (candidateIdx === nextIdx) {
+            break;
+          }
+
+          nextIdx = candidateIdx;
+          if (!fileLines[nextIdx]?.isHeader) {
+            break;
+          }
+        }
+
+        setFilesScroll((scrollPos) => {
+          if (nextIdx < scrollPos) return nextIdx;
+          if (nextIdx >= scrollPos + bottomInnerH) return nextIdx - bottomInnerH + 1;
+          return scrollPos;
         });
-      }
+
+        return nextIdx;
+      });
     },
-    [selectedFileIdx, bottomInnerH]
+    [bottomInnerH]
   );
 
   // ── Build file lines (needed before useInput handler) ──────────────────
