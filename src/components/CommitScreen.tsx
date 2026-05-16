@@ -484,7 +484,7 @@ export function CommitScreen({
       copyHash();
       return;
     }
-    if (input === '+') {
+    if (input === '+' || input === ' ') {
       handleToggleStage(allFileLines);
       return;
     }

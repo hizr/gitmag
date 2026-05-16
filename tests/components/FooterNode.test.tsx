@@ -99,7 +99,7 @@ describe('FooterNode', () => {
         isWorkingCommit: true,
       })
     );
-    expect(workingFrame()).toContain('[+] stage/unstage');
+    expect(workingFrame()).toContain('[+/space] stage/unstage');
 
     const { lastFrame: graphFrame } = render(
       React.createElement(FooterNode, {
@@ -109,7 +109,7 @@ describe('FooterNode', () => {
         isWorkingCommit: true,
       })
     );
-    expect(graphFrame()).not.toContain('[+] stage/unstage');
+    expect(graphFrame()).not.toContain('[+/space] stage/unstage');
 
     const { lastFrame: nonWorkingFrame } = render(
       React.createElement(FooterNode, {
@@ -119,6 +119,6 @@ describe('FooterNode', () => {
         isWorkingCommit: false,
       })
     );
-    expect(nonWorkingFrame()).not.toContain('[+] stage/unstage');
+    expect(nonWorkingFrame()).not.toContain('[+/space] stage/unstage');
   });
 });

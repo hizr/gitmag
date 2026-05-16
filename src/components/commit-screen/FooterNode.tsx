@@ -30,7 +30,8 @@ export function FooterNode({ copyStatus, matchCount, focus, isWorkingCommit }: F
   return (
     <Text color="gray" dimColor>
       [/] search [up/down] navigate [enter] select/diff
-      {showStageHint ? ' [+] stage/unstage' : ''} [c] copy SHA [p] pick [bksp/del] back [q] quit
+      {showStageHint ? ' [+/space] stage/unstage' : ''} [c] copy SHA [p] pick [bksp/del] back [q]
+      quit
     </Text>
   );
 }

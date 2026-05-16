@@ -4,6 +4,7 @@ import React from 'react';
 import type { Key } from 'ink';
 import { CommitScreen } from '../../src/components/CommitScreen.js';
 import type { RepoEntry, WorkingChanges } from '../../src/data/mockRepos.js';
+import type { Repository } from '../../src/data/Repository.js';
 
 type InputHandler = (input: string, key: Key) => void;
 
@@ -282,4 +283,44 @@ describe('CommitScreen interactions', () => {
       0
     );
   });
+
+  it.each([' ', '+'])(
+    'toggles stage/unstage for selected working file when %j is pressed',
+    async (toggleKey) => {
+      const workingChanges: WorkingChanges = {
+        staged: [{ status: 'A', path: 'src/new.ts' }],
+        unstaged: [{ status: 'M', path: 'src/mod.ts' }],
+        untracked: [],
+      };
+      const repository = {
+        stageFile: vi.fn().mockResolvedValue(undefined),
+        unstageFile: vi.fn().mockResolvedValue(undefined),
+      } as unknown as Repository;
+      const refreshWorkingChanges = vi.fn().mockResolvedValue(workingChanges);
+
+      const app = render(
+        React.createElement(CommitScreen, {
+          repo: MOCK_REPO,
+          onBack: vi.fn(),
+          workingChanges,
+          repository,
+          refreshWorkingChanges,
+        })
+      );
+      mounted.push(app);
+
+      // Enter files panel and move from header to first staged file
+      await send('', { return: true });
+      await flush();
+      await send('', { downArrow: true });
+      await flush();
+
+      await send(toggleKey);
+      await flush();
+
+      expect(repository.unstageFile).toHaveBeenCalledWith('src/new.ts');
+      expect(repository.stageFile).not.toHaveBeenCalled();
+      expect(refreshWorkingChanges).toHaveBeenCalledTimes(1);
+    }
+  );
 });
