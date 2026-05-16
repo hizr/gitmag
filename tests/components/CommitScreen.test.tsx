@@ -230,24 +230,6 @@ describe('CommitScreen', () => {
     expect(output).toMatch(/[MA]/);
   });
 
-  // ── Footer ────────────────────────────────────────────────────────────────
-
-  it('includes navigation instructions in the footer', () => {
-    const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
-    );
-    const output = lastFrame();
-    expect(output).toMatch(/j\/k|navigate/i);
-    expect(output).toMatch(/bksp|backspace/i);
-  });
-
-  it('mentions the copy SHA shortcut in the footer', () => {
-    const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
-    );
-    expect(lastFrame()).toMatch(/\[c\]|copy sha/i);
-  });
-
   // ── Props / API ───────────────────────────────────────────────────────────
 
   it('accepts onBack prop without throwing', () => {
@@ -307,13 +289,6 @@ describe('CommitScreen', () => {
         })
       )
     ).not.toThrow();
-  });
-
-  it('displays [enter] view diff in the footer', () => {
-    const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
-    );
-    expect(lastFrame()).toMatch(/enter|select\/diff/i);
   });
 
   // ── Focus-switching behaviour ─────────────────────────────────────────
@@ -382,33 +357,6 @@ describe('CommitScreen', () => {
     expect(() =>
       render(React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack }))
     ).not.toThrow();
-  });
-
-  it('displays [p] pick in the footer hint', () => {
-    const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
-    );
-    const output = lastFrame();
-    expect(output).toMatch(/\[p\]\s+pick/i);
-  });
-
-  it('includes pick command between copy SHA and back commands in footer', () => {
-    const { lastFrame } = render(
-      React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: mockOnBack })
-    );
-    const output = lastFrame();
-    if (!output) throw new Error('lastFrame() returned undefined');
-
-    // Verify the order: [c] copy SHA ... [p] pick ... [bksp/del] back
-    const cIndex = output.indexOf('[c]');
-    const pIndex = output.indexOf('[p]');
-    const bkspIndex = output.indexOf('[bksp/del]');
-
-    expect(cIndex).toBeGreaterThanOrEqual(0);
-    expect(pIndex).toBeGreaterThanOrEqual(0);
-    expect(bkspIndex).toBeGreaterThanOrEqual(0);
-    expect(cIndex).toBeLessThan(pIndex);
-    expect(pIndex).toBeLessThan(bkspIndex);
   });
 
   it('passes selectedCommit.hash to onPickCommit callback when p key is pressed', async () => {

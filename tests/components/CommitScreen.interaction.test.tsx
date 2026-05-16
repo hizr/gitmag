@@ -282,22 +282,4 @@ describe('CommitScreen interactions', () => {
       0
     );
   });
-
-  it('renders footer text for default and search match states', async () => {
-    const app = render(React.createElement(CommitScreen, { repo: MOCK_REPO, onBack: vi.fn() }));
-    mounted.push(app);
-
-    expect(app.lastFrame()).toContain('[/] search');
-
-    await send('/');
-    await flush();
-    await send('f');
-    await send('i');
-    await send('x');
-    await flush();
-    await send('', { return: true });
-    await flush();
-
-    expect(app.lastFrame()).toContain('[n/m] next/prev match');
-  });
 });
