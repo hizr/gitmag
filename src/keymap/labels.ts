@@ -13,7 +13,7 @@ const TOKEN_LABEL: Record<string, string> = {
   space: 'space',
 };
 
-export function keyTokenLabel(token: string): string {
+function keyTokenLabel(token: string): string {
   return TOKEN_LABEL[token] ?? token;
 }
 
