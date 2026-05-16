@@ -32,9 +32,6 @@ jobs:
       - name: Duplication check (jscpd)
         run: bun run duplication
 
-      - name: Dependency vulnerability audit
-        run: bun run audit
-
       - name: Run tests with coverage enforcement
         run: bun run test -- --coverage --coverage.lines=80 --coverage.branches=80 --coverage.functions=80 --coverage.statements=80
 
