@@ -1,6 +1,7 @@
 import React from 'react';
 import { render } from 'ink';
 import { App } from './app.js';
+import { loadKeymap } from './keymap/loader.js';
 import {
   createTerminalController,
   selectRenderTarget,
@@ -52,11 +53,14 @@ let pickedHash: string | null = null;
 // Enter fullscreen alternative screen buffer and hide cursor
 terminal.enter();
 
+const keymap = await loadKeymap();
+
 const { waitUntilExit } = render(
   React.createElement(App, {
     onPickCommit: (hash: string) => {
       pickedHash = hash;
     },
+    keymap,
   }),
   { stdout: renderTarget }
 );

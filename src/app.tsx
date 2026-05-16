@@ -7,6 +7,8 @@ import { useRepository } from './hooks/useRepository.js';
 import { useQuit } from './hooks/useQuit.js';
 import type { ScanProgress } from './components/Scanner.js';
 import type { RepoEntry, CommitEntry, ChangedFile } from './data/mockRepos.js';
+import { DEFAULT_KEYMAP } from './keymap/default-keymap.js';
+import type { AppKeymap } from './keymap/types.js';
 
 type Route =
   | { name: 'commit'; repoPath: string; repo: RepoEntry }
@@ -22,9 +24,10 @@ type Route =
 
 interface AppProps {
   readonly onPickCommit?: (hash: string) => void;
+  readonly keymap?: AppKeymap;
 }
 
-export function App({ onPickCommit }: AppProps) {
+export function App({ onPickCommit, keymap = DEFAULT_KEYMAP }: AppProps) {
   const [screen, setScreen] = useState<'splash' | 'router'>('splash');
   const [stack, setStack] = useState<Route[]>([]);
   const [selectedCommitIdx, setSelectedCommitIdx] = useState(0);
@@ -50,7 +53,7 @@ export function App({ onPickCommit }: AppProps) {
   const current = stack[stack.length - 1];
 
   // Handle quit key ('q') when on router (not on splash screen)
-  useQuit(screen === 'router');
+  useQuit(screen === 'router', keymap);
 
   const handleBack = useCallback(() => {
     pop();
@@ -181,6 +184,7 @@ export function App({ onPickCommit }: AppProps) {
         repository={repository}
         refreshWorkingChanges={refreshWorkingChanges}
         onOpenDiff={handleOpenDiff}
+        keymap={keymap}
       />
     );
   }
@@ -197,6 +201,7 @@ export function App({ onPickCommit }: AppProps) {
           setSelectedFileIdx(current.selectedFileIdx);
           setSelectedCommitIdx(current.selectedCommitIdx);
         }}
+        keymap={keymap}
       />
     );
   }
