@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
 import { buildGraphLines, isRenderableConnectorPrefix } from '../utils/git-graph.js';
@@ -8,6 +8,7 @@ import { GraphRow, GraphConnectorRow } from './commit-screen/GraphRow.js';
 import { BranchInfoPanel } from './commit-screen/BranchInfoPanel.js';
 import { CommitInfoPanel } from './commit-screen/CommitInfoPanel.js';
 import { ChangedFilesPanel } from './commit-screen/ChangedFilesPanel.js';
+import { FooterNode } from './commit-screen/FooterNode.js';
 import type { Repository } from '../data/Repository.js';
 import {
   handleClipboardSuccess,
@@ -483,7 +484,7 @@ export function CommitScreen({
       copyHash();
       return;
     }
-    if (input === '+') {
+    if (input === '+' || input === ' ') {
       handleToggleStage(allFileLines);
       return;
     }
@@ -508,31 +509,6 @@ export function CommitScreen({
     [graphLines, graphScroll, graphInnerH]
   );
 
-  // ── Footer node ────────────────────────────────────────────────────────
-  const footerNode = useMemo<ReactNode>(() => {
-    if (copyStatus) {
-      return (
-        <Text color="green" bold>
-          {copyStatus}
-        </Text>
-      );
-    }
-    if (matchIndices.length > 0) {
-      return (
-        <Text color="gray" dimColor>
-          [n/m] next/prev match ({matchIndices.length} results) [/] new search [ESC] clear [up/down]
-          navigate [q] quit
-        </Text>
-      );
-    }
-    const showStageHint = focus === 'files' && displayCommit.hash === '__WORKING__';
-    return (
-      <Text color="gray" dimColor>
-        [/] search [up/down] navigate [enter] select/diff
-        {showStageHint ? ' [+] stage/unstage' : ''} [c] copy SHA [p] pick [bksp/del] back [q] quit
-      </Text>
-    );
-  }, [copyStatus, matchIndices.length, focus, displayCommit.hash]);
   return (
     <Box flexDirection="column" width={termCols} height={termRows} paddingX={1}>
       {/* ── Header ───────────────────────────────────────────────────── */}
@@ -665,7 +641,14 @@ export function CommitScreen({
       </Box>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <Box marginTop={0}>{footerNode}</Box>
+      <Box marginTop={0}>
+        <FooterNode
+          copyStatus={copyStatus}
+          matchCount={matchIndices.length}
+          focus={focus}
+          isWorkingCommit={displayCommit.hash === '__WORKING__'}
+        />
+      </Box>
     </Box>
   );
 }
