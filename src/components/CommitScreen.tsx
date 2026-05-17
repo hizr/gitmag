@@ -10,6 +10,9 @@ import { CommitInfoPanel } from './commit-screen/CommitInfoPanel.js';
 import { ChangedFilesPanel } from './commit-screen/ChangedFilesPanel.js';
 import { FooterNode } from './commit-screen/FooterNode.js';
 import type { Repository } from '../data/Repository.js';
+import { DEFAULT_KEYMAP } from '../keymap/default-keymap.js';
+import { isActionPressed } from '../keymap/match.js';
+import { KEY_ACTION, type AppKeymap } from '../keymap/types.js';
 import {
   handleClipboardSuccess,
   handleClipboardError,
@@ -39,6 +42,7 @@ interface CommitScreenProps {
   readonly onPickCommit?: (hash: string) => void;
   readonly repository?: Repository | null;
   readonly refreshWorkingChanges?: () => Promise<WorkingChanges | null>;
+  readonly keymap?: AppKeymap;
 }
 
 export function CommitScreen({
@@ -51,6 +55,7 @@ export function CommitScreen({
   onPickCommit,
   repository,
   refreshWorkingChanges,
+  keymap = DEFAULT_KEYMAP,
 }: CommitScreenProps) {
   const { stdout } = useStdout();
   const { exit } = useApp();
@@ -365,9 +370,9 @@ export function CommitScreen({
   );
 
   const handleArrowInput = useCallback(
-    (_input: string, key: Key, fileLines: FileLine[]) => {
-      const up = key.upArrow;
-      const down = key.downArrow;
+    (input: string, key: Key, fileLines: FileLine[]) => {
+      const up = isActionPressed(keymap, KEY_ACTION.navigationUp, input, key);
+      const down = isActionPressed(keymap, KEY_ACTION.navigationDown, input, key);
       if (!up && !down) return;
       if (focus === 'graph') {
         navigateGraph(up ? 'up' : 'down');
@@ -375,7 +380,7 @@ export function CommitScreen({
         navigateFiles(up ? 'up' : 'down', fileLines);
       }
     },
-    [focus, navigateGraph, navigateFiles]
+    [focus, keymap, navigateGraph, navigateFiles]
   );
 
   // ── Toggle stage/unstage handler ──────────────────────────────────────
@@ -450,49 +455,52 @@ export function CommitScreen({
   // ── Keyboard input ────────────────────────────────────────────────────
   useInput((input, key) => {
     if (searchOpen) return;
-    if (input === 'q') {
+    if (isActionPressed(keymap, KEY_ACTION.quit, input, key)) {
       exit();
       return;
     }
-    if (input === 'p') {
+    if (isActionPressed(keymap, KEY_ACTION.pick, input, key)) {
       onPickCommit?.(selectedCommit.hash);
       exit();
       return;
     }
-    if (input === 'n') {
+    if (isActionPressed(keymap, KEY_ACTION.searchNextMatch, input, key)) {
       navigateMatch('next');
       return;
     }
-    if (input === 'm') {
+    if (isActionPressed(keymap, KEY_ACTION.searchPrevMatch, input, key)) {
       navigateMatch('prev');
       return;
     }
-    if (key.escape && matchIndices.length > 0) {
+    if (
+      isActionPressed(keymap, KEY_ACTION.searchClearMatches, input, key) &&
+      matchIndices.length > 0
+    ) {
       setMatchIndices([]);
       setActiveMatchIdx(-1);
       return;
     }
-    if (input === '/') {
+    if (isActionPressed(keymap, KEY_ACTION.searchOpen, input, key)) {
       setSearchOpen(true);
       return;
     }
-    if (key.tab) {
+    if (isActionPressed(keymap, KEY_ACTION.focusCycle, input, key)) {
       cycleTab();
       return;
     }
-    if (input === 'c') {
+    if (isActionPressed(keymap, KEY_ACTION.clipboardCopySha, input, key)) {
       copyHash();
       return;
     }
-    if (input === '+' || input === ' ') {
+    if (isActionPressed(keymap, KEY_ACTION.workingToggleStage, input, key)) {
       handleToggleStage(allFileLines);
       return;
     }
-    if (key.backspace || key.delete) {
+    if (isActionPressed(keymap, KEY_ACTION.back, input, key)) {
       handleBackOrDelete();
       return;
     }
-    if (key.return) {
+    if (isActionPressed(keymap, KEY_ACTION.select, input, key)) {
       handleReturn(allFileLines);
       return;
     }
@@ -553,6 +561,7 @@ export function CommitScreen({
               setPreviewCommitIdx(commitIdx);
             }}
             onClose={() => setSearchOpen(false)}
+            keymap={keymap}
             maxWidth={termCols - 1}
             maxHeight={graphHeight}
           />
@@ -647,6 +656,7 @@ export function CommitScreen({
           matchCount={matchIndices.length}
           focus={focus}
           isWorkingCommit={displayCommit.hash === '__WORKING__'}
+          keymap={keymap}
         />
       </Box>
     </Box>

@@ -2,6 +2,10 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { Box, Text, useStdout, useInput, useApp } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile } from '../data/mockRepos.js';
 import { Panel } from './common/Panel.js';
+import { DEFAULT_KEYMAP } from '../keymap/default-keymap.js';
+import { keysHint } from '../keymap/labels.js';
+import { isActionPressed } from '../keymap/match.js';
+import { KEY_ACTION, type AppKeymap } from '../keymap/types.js';
 
 interface FileDiffScreenProps {
   readonly repo: RepoEntry;
@@ -9,6 +13,7 @@ interface FileDiffScreenProps {
   readonly file: ChangedFile;
   readonly getDiff: () => Promise<string>;
   readonly onBack: () => void;
+  readonly keymap?: AppKeymap;
 }
 
 // ── Diff line renderer ────────────────────────────────────────────────────────
@@ -57,7 +62,14 @@ function DiffLine({ line, lineNumber, showLineNumbers }: DiffLineProps) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiffScreenProps) {
+export function FileDiffScreen({
+  repo,
+  commit,
+  file,
+  getDiff,
+  onBack,
+  keymap = DEFAULT_KEYMAP,
+}: FileDiffScreenProps) {
   const { stdout } = useStdout();
   const { exit } = useApp();
   const termCols = Math.max(stdout.columns ?? 80, 80);
@@ -106,23 +118,23 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
 
   // ── Keyboard input ───────────────────────────────────────────────────
   useInput((input, key) => {
-    if (input === 'q') {
+    if (isActionPressed(keymap, KEY_ACTION.quit, input, key)) {
       exit();
       return;
     }
 
-    if (key.backspace || key.delete) {
+    if (isActionPressed(keymap, KEY_ACTION.back, input, key)) {
       onBack();
       return;
     }
 
-    if (input === 'l') {
+    if (isActionPressed(keymap, KEY_ACTION.diffToggleLineNumbers, input, key)) {
       setShowLineNumbers((p) => !p);
       return;
     }
 
-    const up = key.upArrow;
-    const down = key.downArrow;
+    const up = isActionPressed(keymap, KEY_ACTION.navigationUp, input, key);
+    const down = isActionPressed(keymap, KEY_ACTION.navigationDown, input, key);
 
     if (up) {
       setDiffScroll((p) => Math.max(p - 1, 0));
@@ -233,7 +245,13 @@ export function FileDiffScreen({ repo, commit, file, getDiff, onBack }: FileDiff
       <Box marginTop={0}>
         <Box flexGrow={1}>
           <Text color="gray" dimColor>
-            [up/down] scroll [l] toggle line# [bksp/del] back [q] quit
+            {keysHint([
+              ...keymap.bindings[KEY_ACTION.navigationUp],
+              ...keymap.bindings[KEY_ACTION.navigationDown],
+            ])}{' '}
+            scroll {keysHint(keymap.bindings[KEY_ACTION.diffToggleLineNumbers])} toggle line#{' '}
+            {keysHint(keymap.bindings[KEY_ACTION.back])} back{' '}
+            {keysHint(keymap.bindings[KEY_ACTION.quit])} quit
           </Text>
         </Box>
         <Text color="gray" dimColor>

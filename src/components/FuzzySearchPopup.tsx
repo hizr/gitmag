@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { Box, Text, useInput } from 'ink';
 import Fuse from 'fuse.js';
 import type { CommitEntry } from '../data/mockRepos.js';
+import { DEFAULT_KEYMAP } from '../keymap/default-keymap.js';
+import { isActionPressed } from '../keymap/match.js';
+import { KEY_ACTION, type AppKeymap } from '../keymap/types.js';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +31,7 @@ interface FuzzySearchPopupProps {
   readonly onClose: () => void;
   readonly maxWidth: number;
   readonly maxHeight: number;
+  readonly keymap?: AppKeymap;
 }
 
 // ── Panel border helper ───────────────────────────────────────────────────────
@@ -71,6 +75,7 @@ export function FuzzySearchPopup({
   onClose,
   maxWidth,
   maxHeight,
+  keymap = DEFAULT_KEYMAP,
 }: FuzzySearchPopupProps) {
   const [query, setQuery] = useState('');
   const [highlightIdx, setHighlightIdx] = useState(0);
@@ -150,25 +155,24 @@ export function FuzzySearchPopup({
       input &&
       !key.leftArrow &&
       !key.rightArrow &&
-      !key.upArrow &&
-      !key.downArrow &&
-      !key.backspace &&
-      !key.delete &&
-      !key.return &&
-      !key.escape
+      !isActionPressed(keymap, KEY_ACTION.navigationUp, input, key) &&
+      !isActionPressed(keymap, KEY_ACTION.navigationDown, input, key) &&
+      !isActionPressed(keymap, KEY_ACTION.searchDeleteChar, input, key) &&
+      !isActionPressed(keymap, KEY_ACTION.select, input, key) &&
+      !isActionPressed(keymap, KEY_ACTION.searchClose, input, key)
     ) {
       setQuery((q) => q + input);
       return;
     }
 
     // Backspace: remove last character
-    if (key.backspace || key.delete) {
+    if (isActionPressed(keymap, KEY_ACTION.searchDeleteChar, input, key)) {
       setQuery((q) => q.slice(0, -1));
       return;
     }
 
     // Navigation within results
-    if (key.upArrow) {
+    if (isActionPressed(keymap, KEY_ACTION.navigationUp, input, key)) {
       setHighlightIdx((idx) => {
         const nextIdx = Math.max(idx - 1, 0);
         // Adjust scroll if next highlight goes above visible window
@@ -180,7 +184,7 @@ export function FuzzySearchPopup({
       return;
     }
 
-    if (key.downArrow) {
+    if (isActionPressed(keymap, KEY_ACTION.navigationDown, input, key)) {
       const maxIdx = Math.max(results.length - 1, 0);
       setHighlightIdx((idx) => {
         const nextIdx = Math.min(idx + 1, maxIdx);
@@ -197,7 +201,7 @@ export function FuzzySearchPopup({
     }
 
     // Select result (parent closes popup via onSelect callback)
-    if (key.return) {
+    if (isActionPressed(keymap, KEY_ACTION.select, input, key)) {
       if (results.length > 0) {
         const selectedResult = results[highlightIdx];
         if (selectedResult) {
@@ -208,7 +212,7 @@ export function FuzzySearchPopup({
     }
 
     // Close popup
-    if (key.escape) {
+    if (isActionPressed(keymap, KEY_ACTION.searchClose, input, key)) {
       onClose();
     }
   });
