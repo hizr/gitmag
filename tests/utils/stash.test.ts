@@ -54,6 +54,11 @@ describe('mergeStashes', () => {
     expect(result.map((c) => c.hash)).toEqual(['a', 'b', 'c']);
   });
 
+  it('skips stashes without a base parent', () => {
+    const orphan = commit('s', [], ['stash@{0}']);
+    expect(mergeStashes(commits, [orphan]).map((c) => c.hash)).toEqual(['a', 'b', 'c']);
+  });
+
   it('does not mutate the input arrays', () => {
     const input = [...commits];
     mergeStashes(input, [stash('s', 'a', 0)]);
