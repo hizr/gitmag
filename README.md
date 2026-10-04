@@ -29,6 +29,7 @@ gitmag
 - **Live git integration** – Reads real commits, branches, refs, and working directory changes from your repository
 - **ASCII commit graph** – Lane-based rendering with merge connectors and branch visualization
 - **Working directory view** – Synthetic node showing staged, unstaged, and untracked files with per-row staging indicators (`[●]` staged / `[○]` unstaged / `[?]` untracked) and one-key stage/unstage via `+`
+- **Stashes** – Every `git stash list` entry appears as a `◇` node branching off its base commit, with a `[stash@{n}]` badge; its files and diff show the stash against that base (like `git stash show -p`)
 - **Branch info bar** – Current branch, remote tracking status, ahead/behind counts, and HEAD author
 - **Commit explorer** – Interactive navigation through commit history with authors, dates, color-coded ref badges, and messages
 - **Unified diff viewer** – Color-coded additions/deletions, toggleable line numbers, and smooth scrolling

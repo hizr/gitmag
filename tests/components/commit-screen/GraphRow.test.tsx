@@ -46,4 +46,31 @@ describe('GraphRow', () => {
     expect(output?.split('\n')).toHaveLength(1);
     expect(output?.length).toBeLessThanOrEqual(8);
   });
+
+  it('renders a stash with a hollow node and its stash badge', () => {
+    const stashCommit: CommitEntry = {
+      hash: '04061f2e73fd3f0b',
+      message: 'WIP on main: abc 0.4.1',
+      date: '2026-05-16',
+      author: 'hizr',
+      body: '',
+      parentHash: ['df78f7ca608f6a19'],
+      refs: ['stash@{0}'],
+      changedFiles: [],
+    };
+    const { lastFrame } = render(
+      React.createElement(GraphRow, {
+        prefix: '│ ● ',
+        commit: stashCommit,
+        selected: false,
+        maxWidth: 100,
+      })
+    );
+
+    const output = lastFrame() ?? '';
+    expect(output).toContain('│ ◇ ');
+    expect(output).not.toContain('●');
+    expect(output).toContain('[stash@{0}]');
+    expect(output).toContain('04061f2');
+  });
 });

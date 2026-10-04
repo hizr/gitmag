@@ -338,3 +338,12 @@ describe('CommitScreen: synthetic WORKING node injection', () => {
     }
   });
 });
+
+describe('buildGraphLines with stashes', () => {
+  it('branches a stash off its base and closes back with a connector', () => {
+    const stash = { ...commit('s', ['b']), refs: ['stash@{0}'] };
+    const lines = buildGraphLines([commit('a', ['b']), stash, commit('b', [])]);
+    const prefixes = lines.map((l) => l.prefix);
+    expect(prefixes).toEqual(['● ', '│ ● ', '│ / ', '● ']);
+  });
+});

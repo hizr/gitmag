@@ -121,20 +121,83 @@ export class Repository {
         hash,
       ]);
 
-      // Parse output: each line is "<status>\t<path>"
-      return output
+      return this.parseNameStatus(output);
+    } catch {
+      // Commit may not exist or have no files; return empty
+      return [];
+    }
+  }
+
+  /**
+   * Parse `--name-status` output: each line is "<status>\t<path>".
+   */
+  private parseNameStatus(output: string): ChangedFile[] {
+    return output
+      .split('\n')
+      .filter(Boolean)
+      .map((line: string) => {
+        const [status, ...pathParts] = line.split('\t');
+        const path = pathParts.join('\t'); // Handle paths with tabs (rare)
+        return {
+          status: status as FileStatus,
+          path,
+        };
+      });
+  }
+
+  /**
+   * Fetch all stash entries (`git stash list`), newest first, as commit entries.
+   * Each stash keeps only its base commit (parent 1) as parent, so the graph
+   * branches it off the base without opening lanes for the index/untracked
+   * commits. Changed files are the stash compared with its base, matching
+   * `git stash show`.
+   */
+  async listStashes(): Promise<CommitEntry[]> {
+    try {
+      const output = await this.git.raw([
+        'stash',
+        'list',
+        '--format=%H%x1f%gd%x1f%P%x1f%aI%x1f%aN%x1f%s',
+      ]);
+
+      const stashes = output
         .split('\n')
         .filter(Boolean)
         .map((line: string) => {
-          const [status, ...pathParts] = line.split('\t');
-          const path = pathParts.join('\t'); // Handle paths with tabs (rare)
+          const [hash = '', ref = '', parents = '', date = '', author = '', message = ''] =
+            line.split('\x1f');
+          const base = parents.split(' ').find(Boolean);
           return {
-            status: status as FileStatus,
-            path,
+            hash,
+            message,
+            date: date ? new Date(date).toISOString().split('T')[0] : 'unknown',
+            author: author || 'Unknown',
+            body: '',
+            parentHash: base ? [base] : [],
+            refs: [ref],
+            changedFiles: [] as ChangedFile[],
           };
         });
+
+      return await Promise.all(
+        stashes.map(async (stash) => ({
+          ...stash,
+          changedFiles: stash.parentHash[0]
+            ? await this.getStashChangedFiles(stash.parentHash[0], stash.hash)
+            : [],
+        }))
+      );
     } catch {
-      // Commit may not exist or have no files; return empty
+      // No stash support or git failed; show no stashes
+      return [];
+    }
+  }
+
+  private async getStashChangedFiles(base: string, hash: string): Promise<ChangedFile[]> {
+    try {
+      const output = await this.git.raw(['diff', '--name-status', base, hash]);
+      return this.parseNameStatus(output);
+    } catch {
       return [];
     }
   }

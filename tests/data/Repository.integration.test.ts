@@ -407,3 +407,76 @@ describe('Repository Integration Tests', () => {
     });
   });
 });
+
+describe('Repository.listStashes() (integration)', () => {
+  let tempDir: string;
+  let repoPath: string;
+  const run = (cmd: string) => execSync(cmd, { cwd: repoPath, stdio: 'pipe' }).toString();
+
+  beforeAll(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gitmag-stash-'));
+    repoPath = path.join(tempDir, 'repo');
+    fs.mkdirSync(repoPath);
+    run('git init');
+    run('git config user.email "test@example.com"');
+    run('git config user.name "Test User"');
+    fs.writeFileSync(path.join(repoPath, 'a.txt'), 'a\n');
+    fs.writeFileSync(path.join(repoPath, 'b.txt'), 'b\n');
+    run('git add .');
+    run('git commit -m "initial"');
+  });
+
+  afterAll(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('returns [] when there are no stashes', async () => {
+    const repo = await Repository.open(repoPath);
+    expect(await repo.listStashes()).toEqual([]);
+  });
+
+  it('returns [] when git fails', async () => {
+    const brokenPath = fs.mkdtempSync(path.join(os.tmpdir(), 'gitmag-broken-'));
+    execSync('git init', { cwd: brokenPath, stdio: 'pipe' });
+    const repo = await Repository.open(brokenPath);
+    fs.rmSync(path.join(brokenPath, '.git'), { recursive: true, force: true });
+    try {
+      expect(await repo.listStashes()).toEqual([]);
+    } finally {
+      fs.rmSync(brokenPath, { recursive: true, force: true });
+    }
+  });
+
+  describe('with stashes', () => {
+    beforeAll(() => {
+      fs.writeFileSync(path.join(repoPath, 'a.txt'), 'a changed\n');
+      run('git stash push -m "first"');
+      fs.writeFileSync(path.join(repoPath, 'b.txt'), 'b changed\n');
+      run('git add b.txt');
+      run('git stash push -m "second"');
+    });
+
+    it('lists every stash with its ref, base parent and changed files', async () => {
+      const repo = await Repository.open(repoPath);
+      const head = run('git rev-parse HEAD').trim();
+      const stashes = await repo.listStashes();
+
+      expect(stashes).toHaveLength(2);
+      expect(stashes[0].refs).toEqual(['stash@{0}']);
+      expect(stashes[0].message).toContain('second');
+      expect(stashes[0].hash).toBe(run('git rev-parse stash@{0}').trim());
+      expect(stashes[0].parentHash).toEqual([head]);
+      expect(stashes[0].changedFiles).toEqual([{ status: 'M', path: 'b.txt' }]);
+      expect(stashes[1].refs).toEqual(['stash@{1}']);
+      expect(stashes[1].changedFiles).toEqual([{ status: 'M', path: 'a.txt' }]);
+    });
+
+    it('getDiff on a stash matches git stash show -p', async () => {
+      const repo = await Repository.open(repoPath);
+      const [latest] = await repo.listStashes();
+      const diff = await repo.getDiff(latest.hash, 'b.txt');
+      expect(diff).toContain('+b changed');
+      expect(diff.trim()).toBe(run('git stash show -p stash@{0}').trim());
+    });
+  });
+});
