@@ -35,5 +35,7 @@ export interface CommitEntry {
 export interface RepoEntry {
   path: string;
   commits: CommitEntry[];
+  /** Stash entries (newest first); each has only its base commit as parent */
+  stashes?: CommitEntry[];
   branchInfo?: BranchInfo;
 }

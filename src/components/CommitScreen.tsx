@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Box, Text, useStdout, useInput, useApp, type Key } from 'ink';
 import type { RepoEntry, CommitEntry, ChangedFile, WorkingChanges } from '../data/mockRepos.js';
 import { buildGraphLines, isRenderableConnectorPrefix } from '../utils/git-graph.js';
+import { mergeStashes } from '../utils/stash.js';
 import { FuzzySearchPopup } from './FuzzySearchPopup.js';
 import { Panel } from './common/Panel.js';
 import { GraphRow, GraphConnectorRow } from './commit-screen/GraphRow.js';
@@ -86,11 +87,11 @@ export function CommitScreen({
     };
   }, [workingChanges, repo.commits]);
 
-  // Prepend WORKING node if it exists
-  const commitsWithWorking = useMemo(
-    () => (syntheticWorkingCommit ? [syntheticWorkingCommit, ...repo.commits] : repo.commits),
-    [syntheticWorkingCommit, repo.commits]
-  );
+  // Prepend WORKING node if it exists; stashes branch off their base commits
+  const commitsWithWorking = useMemo(() => {
+    const commits = mergeStashes(repo.commits, repo.stashes ?? []);
+    return syntheticWorkingCommit ? [syntheticWorkingCommit, ...commits] : commits;
+  }, [syntheticWorkingCommit, repo.commits, repo.stashes]);
 
   const graphLines = useMemo(() => buildGraphLines(commitsWithWorking), [commitsWithWorking]);
 

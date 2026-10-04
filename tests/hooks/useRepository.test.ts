@@ -24,6 +24,7 @@ describe('useRepository', () => {
       listCommits: vi.fn().mockResolvedValue([]),
       getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map()),
       getRefs: vi.fn().mockResolvedValue(new Map()),
+      listStashes: vi.fn().mockResolvedValue([]),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
       getBranchInfo: vi.fn().mockResolvedValue({
         currentBranch: 'main',
@@ -73,6 +74,7 @@ describe('useRepository', () => {
       listCommits: vi.fn().mockResolvedValue(mockCommits),
       getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map([['abc123', []]])),
       getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
+      listStashes: vi.fn().mockResolvedValue([]),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
       getBranchInfo: vi.fn().mockResolvedValue({
         currentBranch: 'main',
@@ -101,6 +103,46 @@ describe('useRepository', () => {
     expect(result.current.repository).toBe(mockRepo);
   });
 
+  it('attaches stashes to the loaded repo entry', async () => {
+    const stash = {
+      hash: 'stash1',
+      message: 'WIP on main: abc123 test commit',
+      date: '2026-03-18',
+      author: 'Test Author',
+      body: '',
+      parentHash: ['abc123'],
+      refs: ['stash@{0}'],
+      changedFiles: [{ status: 'M', path: 'a.txt' }],
+    };
+    const mockRepo = {
+      getPath: () => mockRepoPath,
+      listCommits: vi.fn().mockResolvedValue([]),
+      getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map()),
+      getRefs: vi.fn().mockResolvedValue(new Map()),
+      listStashes: vi.fn().mockResolvedValue([stash]),
+      getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
+      getBranchInfo: vi.fn().mockResolvedValue({
+        currentBranch: 'main',
+        remoteBranch: null,
+        ahead: 0,
+        behind: 0,
+        headAuthor: 'Unknown',
+        repoPath: mockRepoPath,
+      }),
+    };
+    (Repository.open as unknown as { mockResolvedValue: (val: unknown) => void }).mockResolvedValue(
+      mockRepo
+    );
+
+    const { result } = renderHook(() => useRepository(mockRepoPath));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.repos[0].stashes).toEqual([stash]);
+  });
+
   it('sets error state on repository open failure', async () => {
     const errorMessage = 'Not a git repository: /fake/repo';
     (Repository.open as unknown as { mockRejectedValue: (val: unknown) => void }).mockRejectedValue(
@@ -124,6 +166,7 @@ describe('useRepository', () => {
       listCommits: vi.fn().mockResolvedValue([]),
       getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map()),
       getRefs: vi.fn().mockResolvedValue(new Map()),
+      listStashes: vi.fn().mockResolvedValue([]),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
       getBranchInfo: vi.fn().mockResolvedValue({
         currentBranch: 'main',
@@ -165,6 +208,7 @@ describe('useRepository', () => {
       listCommits: vi.fn().mockResolvedValue(mockCommits),
       getChangedFilesForAllCommits: vi.fn().mockResolvedValue(new Map([['abc123', []]])),
       getRefs: vi.fn().mockResolvedValue(new Map([['abc123', ['main']]])),
+      listStashes: vi.fn().mockResolvedValue([]),
       getWorkingChanges: vi.fn().mockResolvedValue({ staged: [], unstaged: [], untracked: [] }),
       getBranchInfo: vi.fn().mockResolvedValue({
         currentBranch: 'main',

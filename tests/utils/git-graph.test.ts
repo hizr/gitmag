@@ -338,3 +338,39 @@ describe('CommitScreen: synthetic WORKING node injection', () => {
     }
   });
 });
+
+describe('buildGraphLines with stashes', () => {
+  it('branches a stash off its base and closes back with a connector', () => {
+    const stash = { ...commit('s', ['b']), refs: ['stash@{0}'] };
+    const lines = buildGraphLines([commit('a', ['b']), stash, commit('b', [])]);
+    const prefixes = lines.map((l) => l.prefix);
+    expect(prefixes).toEqual(['● ', '│ ● ', '│ / ', '● ']);
+  });
+});
+
+describe('buildGraphLines connectors around other lanes', () => {
+  it('opens a merge lane from a non-zero column past an unrelated lane', () => {
+    // lanes before merge: [x, m, w]; m merges p + q at column 1 → [x, p, w, q]
+    const lines = buildGraphLines([
+      commit('a', ['x']),
+      commit('b', ['m']),
+      commit('z', ['w']),
+      commit('m', ['p', 'q']),
+    ]);
+    const connectors = lines.filter((l) => l.kind === 'connector').map((l) => l.prefix);
+    expect(connectors).toContain('│ │   \\ ');
+  });
+
+  it('closes converging lanes while keeping lanes on both sides', () => {
+    // lanes before c: [x, c, y, c]; lanes 1 and 3 converge, 0 and 2 stay
+    const lines = buildGraphLines([
+      commit('a', ['x']),
+      commit('b', ['c']),
+      commit('d', ['y']),
+      commit('e', ['c']),
+      commit('c', []),
+    ]);
+    const connectors = lines.filter((l) => l.kind === 'connector').map((l) => l.prefix);
+    expect(connectors).toContain('│ │ │ / ');
+  });
+});

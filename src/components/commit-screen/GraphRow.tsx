@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { Box, Text } from 'ink';
 import type { CommitEntry } from '../../data/mockRepos.js';
+import { isStashCommit } from '../../utils/stash.js';
 
 interface GraphRowProps {
   readonly prefix: string;
@@ -54,8 +55,13 @@ export const GraphRow = memo(function GraphRow({
     matchMarker = '○';
   }
 
-  // Override prefix for WORKING node to show diamond
-  const displayPrefix = isWorking ? prefix.replace('●', '◆') : prefix;
+  // Override node symbol: diamond for WORKING, hollow diamond for stashes
+  let displayPrefix = prefix;
+  if (isWorking) {
+    displayPrefix = prefix.replace('●', '◆');
+  } else if (isStashCommit(commit)) {
+    displayPrefix = prefix.replace('●', '◇');
+  }
 
   // Compute background color once
   let bgColor: 'green' | 'blue' | undefined;
@@ -82,6 +88,8 @@ export const GraphRow = memo(function GraphRow({
         let color: string;
         if (ref === 'HEAD') {
           color = 'cyan';
+        } else if (ref.startsWith('stash@{')) {
+          color = 'blue';
         } else if (ref.startsWith('origin/')) {
           color = 'yellow';
         } else if (ref.startsWith('refs/tags/') || /^v?\d+\.\d+/.test(ref)) {

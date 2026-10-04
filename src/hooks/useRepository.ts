@@ -66,16 +66,17 @@ export function useRepository(path: string): RepositoryState {
         if (!isMounted) return;
         setState((prev) => ({ ...prev, phase: 'Loading metadata…' }));
 
-        // Phases 4, 5, 6: Run in parallel (all independent of each other)
+        // Phases 4-7: Run in parallel (all independent of each other)
         const headAuthor = commits.length > 0 ? commits[0].author : 'Unknown';
-        const [refMap, workingChanges, branchInfo] = await Promise.all([
+        const [refMap, stashes, workingChanges, branchInfo] = await Promise.all([
           repo.getRefs(),
+          repo.listStashes(),
           repo.getWorkingChanges(),
           repo.getBranchInfo(headAuthor),
         ]);
 
         if (!isMounted) return;
-        finishLoadRepository(repo, commits, refMap, workingChanges, branchInfo);
+        finishLoadRepository(repo, commits, refMap, stashes, workingChanges, branchInfo);
       } catch (err) {
         if (isMounted) {
           // Cannot avoid nesting here (React callback pattern); suppress sonarjs rule
@@ -97,6 +98,7 @@ export function useRepository(path: string): RepositoryState {
       repo: Repository,
       commits: CommitEntry[],
       refMap: Map<string, string[]>,
+      stashes: CommitEntry[],
       workingChanges: WorkingChanges,
       branchInfo: BranchInfo
     ) => {
@@ -126,6 +128,7 @@ export function useRepository(path: string): RepositoryState {
           {
             path: repo.getPath(),
             commits,
+            stashes,
             branchInfo,
           },
         ],
