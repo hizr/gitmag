@@ -1,9 +1,13 @@
 import { simpleGit } from 'simple-git';
-import type { CommitEntry, ChangedFile, WorkingChanges, BranchInfo } from './mockRepos.js';
+import type {
+  CommitEntry,
+  ChangedFile,
+  FileStatus,
+  WorkingChanges,
+  BranchInfo,
+} from './mockRepos.js';
 import type { SimpleGit } from 'simple-git';
 import { readFile } from 'fs/promises';
-
-type FileStatus = 'M' | 'A' | 'D' | 'R';
 
 /**
  * Repository wraps simple-git to provide typed, dedicated functions for
